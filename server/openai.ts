@@ -11,7 +11,10 @@ export async function generateAIResponse(persona: Persona, messages: ChatMessage
       if (msg.persona) {
         return `${msg.persona.name}: ${msg.message}`;
       } else if (msg.user) {
-        return `${msg.user.username}: ${msg.message}`;
+        // Use firstName, email, or generic "User" as fallback
+        const userName = msg.user.firstName || 
+                        (msg.user.email ? msg.user.email.split('@')[0] : 'User');
+        return `${userName}: ${msg.message}`;
       } else {
         return `Unknown: ${msg.message}`;
       }

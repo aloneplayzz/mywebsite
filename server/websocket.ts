@@ -37,6 +37,11 @@ export function setupWebsockets(server: Server) {
             await handleSendMessage(ws, data.payload);
             break;
             
+          case 'ping':
+            // Respond with pong to keep connection alive
+            ws.send(JSON.stringify({ type: 'pong' }));
+            break;
+            
           default:
             console.warn('Unknown WebSocket message type:', data.type);
         }
