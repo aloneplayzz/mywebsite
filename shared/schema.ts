@@ -1,0 +1,99 @@
+import { pgTable, text, serial, integer, timestamp, boolean, varchar } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: text("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  }
+);
+
+// User model
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().notNull(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUserSchema = createInsertSchema(users);
+
+// Chatroom model
+export const chatrooms = pgTable("chatrooms", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  createdBy: integer("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  theme: text("theme").default("default"),
+});
+
+export const insertChatroomSchema = createInsertSchema(chatrooms).pick({
+  name: true,
+  description: true,
+  createdBy: true,
+  theme: true,
+});
+
+// Persona model
+export const personas = pgTable("personas", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  samplePrompt: text("sample_prompt").notNull(),
+  avatarUrl: text("avatar_url").notNull(),
+});
+
+export const insertPersonaSchema = createInsertSchema(personas).pick({
+  name: true,
+  description: true,
+  samplePrompt: true,
+  avatarUrl: true,
+});
+
+// Message model
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  roomId: integer("room_id").notNull(),
+  userId: varchar("user_id"),
+  personaId: integer("persona_id"),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMessageSchema = createInsertSchema(messages).pick({
+  roomId: true,
+  userId: true,
+  personaId: true,
+  message: true,
+});
+
+// Type definitions
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Chatroom = typeof chatrooms.$inferSelect;
+export type InsertChatroom = z.infer<typeof insertChatroomSchema>;
+
+export type Persona = typeof personas.$inferSelect;
+export type InsertPersona = z.infer<typeof insertPersonaSchema>;
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+// Extended types for frontend
+export type ChatMessage = Message & {
+  user?: User;
+  persona?: Persona;
+};
+
+export type ChatroomWithStats = Chatroom & {
+  activeUsers: number;
+};
