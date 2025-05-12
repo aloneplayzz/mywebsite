@@ -10,7 +10,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import Sidebar from "./sidebar";
+import Sidebar from "./sidebar-fixed";
 
 interface MobileMenuProps {
   isOpen: boolean;
