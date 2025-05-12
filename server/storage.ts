@@ -26,6 +26,7 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: InsertUser): Promise<User>;
+  getAllUsers(): Promise<User[]>;
   
   // Chatroom operations
   getChatroom(id: number): Promise<Chatroom | undefined>;
@@ -192,6 +193,19 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error upserting user:", error);
       throw error;
+    }
+  }
+  
+  async getAllUsers(): Promise<User[]> {
+    try {
+      const allUsers = await db
+        .select()
+        .from(users)
+        .orderBy(users.firstName);
+      return allUsers;
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      return [];
     }
   }
   
