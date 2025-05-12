@@ -50,41 +50,47 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
   const { toast } = useToast();
   const { user } = useAuth();
   const userId = user?.id;
-  
+
   // Fetch chatroom members
-  const { data: members, isLoading: isMembersLoading } = useQuery({
+  const { data: members, isLoading } = useQuery({
     queryKey: [`/api/chatrooms/${chatroomId}/members`],
-    enabled: isOpen
+    enabled: isOpen,
+    select: (data) => data || [], // Ensure we always have an array
   });
-  
-  // Fetch all users for the dropdown
-  const { data: users, isLoading: isUsersLoading } = useQuery({
+
+  // Fetch users to add
+  const { data: users } = useQuery({
     queryKey: ["/api/auth/users"],
-    enabled: isOpen
+    enabled: isOpen,
+    select: (data) => data || [], // Ensure we always have an array
   });
+
+  // Check if current user is owner or moderator
+  const isOwner = Array.isArray(members) && members.some(member => 
+    member.userId === userId && member.role === "owner"
+  );
   
-  // Check user permissions
-  const { data: userMember } = useQuery({
-    queryKey: [`/api/chatrooms/${chatroomId}/members/${userId}`],
-    enabled: !!userId && isOpen
-  });
-  
-  const isOwner = userMember?.role === "owner";
-  const isModerator = isOwner || userMember?.role === "moderator";
-  
-  // Add a member mutation
+  const isModerator = Array.isArray(members) && members.some(member => 
+    member.userId === userId && (member.role === "moderator" || member.role === "owner")
+  );
+
+  // Add member mutation
   const addMemberMutation = useMutation({
-    mutationFn: async (data: { userId: string; role: string }) => {
-      const res = await apiRequest("POST", `/api/chatrooms/${chatroomId}/members`, data);
-      return res.json();
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      const res = await apiRequest("POST", `/api/chatrooms/${chatroomId}/members`, { 
+        userId, 
+        role 
+      });
+      return await res.json();
     },
     onSuccess: () => {
       toast({
         title: "Member added",
-        description: "The member has been added to the chatroom",
+        description: "The user has been added to the chatroom",
       });
-      setNewMemberId("");
       queryClient.invalidateQueries({ queryKey: [`/api/chatrooms/${chatroomId}/members`] });
+      setNewMemberId("");
+      setNewMemberRole("member");
     },
     onError: (error: Error) => {
       toast({
@@ -92,19 +98,21 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
         description: error.message,
         variant: "destructive",
       });
-    }
+    },
   });
-  
+
   // Update member role mutation
-  const updateRoleMutation = useMutation({
+  const updateMemberRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-      const res = await apiRequest("PATCH", `/api/chatrooms/${chatroomId}/members/${userId}`, { role });
-      return res.json();
+      const res = await apiRequest("PUT", `/api/chatrooms/${chatroomId}/members/${userId}`, { 
+        role 
+      });
+      return await res.json();
     },
     onSuccess: () => {
       toast({
         title: "Role updated",
-        description: "The member role has been updated",
+        description: "The member's role has been updated",
       });
       queryClient.invalidateQueries({ queryKey: [`/api/chatrooms/${chatroomId}/members`] });
     },
@@ -114,9 +122,9 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
         description: error.message,
         variant: "destructive",
       });
-    }
+    },
   });
-  
+
   // Remove member mutation
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -135,41 +143,42 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
         description: error.message,
         variant: "destructive",
       });
-    }
+    },
   });
-  
+
+  // Handle add member
   const handleAddMember = () => {
     if (!newMemberId) {
       toast({
-        title: "Select a user",
+        title: "No user selected",
         description: "Please select a user to add",
         variant: "destructive",
       });
       return;
     }
-    
-    addMemberMutation.mutate({
+
+    addMemberMutation.mutate({ 
       userId: newMemberId,
       role: newMemberRole
     });
   };
-  
-  const handleRoleChange = (userId: string, role: string) => {
-    updateRoleMutation.mutate({ userId, role });
+
+  // Handle role change
+  const handleRoleChange = (userId: string, newRole: string) => {
+    updateMemberRoleMutation.mutate({ userId, role: newRole });
   };
-  
+
+  // Handle remove member
   const handleRemoveMember = (userId: string) => {
     removeMemberMutation.mutate(userId);
   };
-  
+
   // Get username from userId
   const getUserName = (userId: string) => {
     if (!Array.isArray(users)) return 'Unknown User';
     const user = users.find(u => u.id === userId);
     return user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Unknown User';
   };
-
-  const isLoading = isMembersLoading || isUsersLoading;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -256,53 +265,54 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
                         </div>
                       </div>
                     
-                      <div className="flex items-center gap-2">
-                        {isModerator && member.userId !== userId && (
-                          <>
-                            {isOwner && (
-                              <Select
-                                value={member.role}
-                                onValueChange={(value) => handleRoleChange(member.userId, value)}
-                              >
-                                <SelectTrigger className="w-[110px]">
-                                  <SelectValue placeholder="Role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="member">Member</SelectItem>
-                                  <SelectItem value="moderator">Moderator</SelectItem>
-                                  <SelectItem value="owner">Owner</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
-                            
-                            {(!isOwner && isModerator) && member.role !== "owner" && (
-                              <Select
-                                value={member.role}
-                                onValueChange={(value) => handleRoleChange(member.userId, value)}
-                              >
-                                <SelectTrigger className="w-[110px]">
-                                  <SelectValue placeholder="Role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="member">Member</SelectItem>
-                                  <SelectItem value="moderator">Moderator</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
-                            
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveMember(member.userId)}
+                    <div className="flex items-center gap-2">
+                      {isModerator && member.userId !== userId && (
+                        <>
+                          {isOwner && (
+                            <Select
+                              value={member.role}
+                              onValueChange={(value) => handleRoleChange(member.userId, value)}
                             >
-                              <UserMinus className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                              <SelectTrigger className="w-[110px]">
+                                <SelectValue placeholder="Role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="member">Member</SelectItem>
+                                <SelectItem value="moderator">Moderator</SelectItem>
+                                <SelectItem value="owner">Owner</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                          
+                          {(!isOwner && isModerator) && member.role !== "owner" && (
+                            <Select
+                              value={member.role}
+                              onValueChange={(value) => handleRoleChange(member.userId, value)}
+                            >
+                              <SelectTrigger className="w-[110px]">
+                                <SelectValue placeholder="Role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="member">Member</SelectItem>
+                                <SelectItem value="moderator">Moderator</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                          
+                          <Button
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleRemoveMember(member.userId)}
+                            disabled={member.role === "owner" && !isOwner}
+                          >
+                            <UserMinus className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </>
+                      )}
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
                 
                 {Array.isArray(members) && members.length === 0 && (
                   <div className="text-center py-4 text-muted-foreground">
@@ -338,7 +348,7 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
                   <Label htmlFor="role">Role</Label>
                   <Select value={newMemberRole} onValueChange={setNewMemberRole}>
                     <SelectTrigger id="role">
-                      <SelectValue placeholder="Select role" />
+                      <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="member">Member</SelectItem>
@@ -347,29 +357,29 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">Cancel</Button>
-                </DialogClose>
+                
                 <Button 
-                  onClick={handleAddMember}
-                  disabled={addMemberMutation.isPending || !newMemberId}
+                  onClick={handleAddMember} 
+                  className="w-full"
+                  disabled={addMemberMutation.isPending}
                 >
                   {addMemberMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding...
-                    </>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   ) : (
-                    <>Add Member</>
+                    <UserPlus className="h-4 w-4 mr-2" />
                   )}
+                  Add Member
                 </Button>
-              </DialogFooter>
+              </div>
             </TabsContent>
           )}
         </Tabs>
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Close</Button>
+          </DialogClose>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

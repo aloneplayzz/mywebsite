@@ -247,7 +247,7 @@ export function setupWebsockets(server: Server) {
         fileName,
         fileSize,
         fileType,
-        attachmentType: attachmentType as any
+        attachmentType: attachmentType as "image" | "audio" | "video" | "document" | "voice_message"
       });
       
       // Get the updated message with the attachment
