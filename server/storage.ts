@@ -48,6 +48,11 @@ export interface IStorage {
   getMessage(id: number): Promise<Message | undefined>;
   getMessagesByRoom(roomId: number, limit?: number): Promise<ChatMessage[]>;
   createMessage(message: InsertMessage): Promise<Message>;
+  starMessage(messageId: number, isStarred: boolean): Promise<Message>;
+  
+  // Attachment operations
+  createAttachment(attachment: InsertAttachment): Promise<Attachment>;
+  getAttachmentsByMessageId(messageId: number): Promise<Attachment[]>;
   
   // Active users tracking
   addActiveUser(roomId: number, userId: string): void;

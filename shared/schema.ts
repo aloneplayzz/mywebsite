@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, varchar, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -93,6 +93,23 @@ export const insertPersonaSchema = createInsertSchema(personas).pick({
   customizable: true,
 });
 
+// Attachment types
+export const attachmentTypes = pgEnum('attachment_type', [
+  'image', 'audio', 'video', 'document', 'voice_message'
+]);
+
+// Attachment model
+export const attachments = pgTable("attachments", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id"),
+  url: text("url").notNull(),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size").notNull(), 
+  fileType: text("file_type").notNull(),
+  attachmentType: attachmentTypes("attachment_type").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Message model
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
@@ -100,6 +117,8 @@ export const messages = pgTable("messages", {
   userId: varchar("user_id"),
   personaId: integer("persona_id"),
   message: text("message").notNull(),
+  isStarred: boolean("is_starred").default(false),
+  hasAttachment: boolean("has_attachment").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -108,6 +127,17 @@ export const insertMessageSchema = createInsertSchema(messages).pick({
   userId: true,
   personaId: true,
   message: true,
+  isStarred: true,
+  hasAttachment: true,
+});
+
+export const insertAttachmentSchema = createInsertSchema(attachments).pick({
+  messageId: true,
+  url: true,
+  fileName: true,
+  fileSize: true,
+  fileType: true,
+  attachmentType: true,
 });
 
 // Type definitions
@@ -129,6 +159,9 @@ export type InsertPersona = z.infer<typeof insertPersonaSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
+export type Attachment = typeof attachments.$inferSelect;
+export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
+
 // Extended types for frontend
 export type PersonaWithCategory = Persona & {
   category?: PersonaCategory;
@@ -137,6 +170,7 @@ export type PersonaWithCategory = Persona & {
 export type ChatMessage = Message & {
   user?: User;
   persona?: PersonaWithCategory;
+  attachments?: Attachment[];
 };
 
 export type ChatroomWithStats = Chatroom & {
