@@ -38,8 +38,17 @@ Respond as ${persona.name} in 1-2 sentences. ${persona.samplePrompt}`;
     });
 
     return response.choices[0].message.content?.trim() || "I'm not sure what to say at the moment.";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating AI response:", error);
+    
+    // Handle rate limit errors specifically
+    if (error.code === 'insufficient_quota' || error.status === 429) {
+      return "I'm currently unavailable due to API rate limits. Please try again later or contact the administrator to check the OpenAI API quota.";
+    } else if (error.code === 'invalid_api_key' || error.status === 401) {
+      return "I'm currently offline due to API authentication issues. Please contact the administrator to check the OpenAI API key.";
+    }
+    
+    // Generic error
     throw new Error("Failed to generate AI response");
   }
 }
