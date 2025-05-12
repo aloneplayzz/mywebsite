@@ -1,12 +1,14 @@
 import { 
   users, insertUserSchema,
   chatrooms, insertChatroomSchema,
+  chatroomMembers, insertChatroomMemberSchema,
   personas, insertPersonaSchema,
   personaCategories, insertPersonaCategorySchema,
   messages, insertMessageSchema,
   sessions,
   User, InsertUser, 
   Chatroom, InsertChatroom, 
+  ChatroomMember, InsertChatroomMember,
   Persona, InsertPersona,
   PersonaCategory, InsertPersonaCategory,
   Message, InsertMessage, 
@@ -50,6 +52,16 @@ export interface IStorage {
   addActiveUser(roomId: number, userId: string): void;
   removeActiveUser(roomId: number, userId: string): void;
   getActiveUsers(roomId: number): string[];
+  
+  // Chatroom members and permissions
+  addChatroomMember(chatroomId: number, userId: string, role?: string): Promise<ChatroomMember>;
+  getChatroomMembers(chatroomId: number): Promise<ChatroomMember[]>;
+  getChatroomMember(chatroomId: number, userId: string): Promise<ChatroomMember | undefined>;
+  updateChatroomMemberRole(chatroomId: number, userId: string, role: string): Promise<ChatroomMember>;
+  removeChatroomMember(chatroomId: number, userId: string): Promise<void>;
+  isChatroomMember(chatroomId: number, userId: string): Promise<boolean>;
+  isChatroomModerator(chatroomId: number, userId: string): Promise<boolean>;
+  isChatroomOwner(chatroomId: number, userId: string): Promise<boolean>;
   
   // Session store
   sessionStore: session.Store;
@@ -392,6 +404,129 @@ export class DatabaseStorage implements IStorage {
   
   getActiveUsers(roomId: number): string[] {
     return Array.from(this.activeUsers.get(roomId) || []);
+  }
+  
+  // Chatroom members and permissions implementation
+  async addChatroomMember(chatroomId: number, userId: string, role: string = 'member'): Promise<ChatroomMember> {
+    try {
+      // Check if user is already a member
+      const existingMember = await this.getChatroomMember(chatroomId, userId);
+      if (existingMember) {
+        return existingMember;
+      }
+      
+      // Add new member
+      const [member] = await db
+        .insert(chatroomMembers)
+        .values({
+          chatroomId,
+          userId,
+          role
+        })
+        .returning();
+      
+      return member;
+    } catch (error) {
+      console.error("Error adding chatroom member:", error);
+      throw error;
+    }
+  }
+  
+  async getChatroomMembers(chatroomId: number): Promise<ChatroomMember[]> {
+    try {
+      return await db
+        .select()
+        .from(chatroomMembers)
+        .where(eq(chatroomMembers.chatroomId, chatroomId));
+    } catch (error) {
+      console.error("Error fetching chatroom members:", error);
+      return [];
+    }
+  }
+  
+  async getChatroomMember(chatroomId: number, userId: string): Promise<ChatroomMember | undefined> {
+    try {
+      const [member] = await db
+        .select()
+        .from(chatroomMembers)
+        .where(
+          and(
+            eq(chatroomMembers.chatroomId, chatroomId),
+            eq(chatroomMembers.userId, userId)
+          )
+        );
+      
+      return member;
+    } catch (error) {
+      console.error("Error fetching chatroom member:", error);
+      return undefined;
+    }
+  }
+  
+  async updateChatroomMemberRole(chatroomId: number, userId: string, role: string): Promise<ChatroomMember> {
+    try {
+      const [member] = await db
+        .update(chatroomMembers)
+        .set({ role })
+        .where(
+          and(
+            eq(chatroomMembers.chatroomId, chatroomId),
+            eq(chatroomMembers.userId, userId)
+          )
+        )
+        .returning();
+      
+      return member;
+    } catch (error) {
+      console.error("Error updating chatroom member role:", error);
+      throw error;
+    }
+  }
+  
+  async removeChatroomMember(chatroomId: number, userId: string): Promise<void> {
+    try {
+      await db
+        .delete(chatroomMembers)
+        .where(
+          and(
+            eq(chatroomMembers.chatroomId, chatroomId),
+            eq(chatroomMembers.userId, userId)
+          )
+        );
+    } catch (error) {
+      console.error("Error removing chatroom member:", error);
+      throw error;
+    }
+  }
+  
+  async isChatroomMember(chatroomId: number, userId: string): Promise<boolean> {
+    try {
+      const member = await this.getChatroomMember(chatroomId, userId);
+      return !!member;
+    } catch (error) {
+      console.error("Error checking chatroom membership:", error);
+      return false;
+    }
+  }
+  
+  async isChatroomModerator(chatroomId: number, userId: string): Promise<boolean> {
+    try {
+      const member = await this.getChatroomMember(chatroomId, userId);
+      return !!member && (member.role === 'moderator' || member.role === 'owner');
+    } catch (error) {
+      console.error("Error checking chatroom moderator status:", error);
+      return false;
+    }
+  }
+  
+  async isChatroomOwner(chatroomId: number, userId: string): Promise<boolean> {
+    try {
+      const member = await this.getChatroomMember(chatroomId, userId);
+      return !!member && member.role === 'owner';
+    } catch (error) {
+      console.error("Error checking chatroom owner status:", error);
+      return false;
+    }
   }
 }
 
