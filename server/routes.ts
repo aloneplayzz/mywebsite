@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupWebsockets } from "./websocket";
-import { insertChatroomSchema } from "@shared/schema";
+import { insertChatroomSchema, insertPersonaSchema, insertPersonaCategorySchema } from "@shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
 
@@ -66,6 +66,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API routes for persona categories
+  app.get("/api/persona-categories", async (req, res) => {
+    try {
+      const categories = await storage.getPersonaCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching persona categories:", error);
+      res.status(500).json({ message: "Failed to fetch persona categories" });
+    }
+  });
+
+  app.post("/api/persona-categories", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertPersonaCategorySchema.parse(req.body);
+      const category = await storage.createPersonaCategory(validatedData);
+      res.status(201).json(category);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      console.error("Error creating persona category:", error);
+      res.status(500).json({ message: "Failed to create persona category" });
+    }
+  });
+
   // API routes for personas
   app.get("/api/personas", async (req, res) => {
     try {
@@ -74,6 +102,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching personas:", error);
       res.status(500).json({ message: "Failed to fetch personas" });
+    }
+  });
+
+  app.post("/api/personas", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertPersonaSchema.parse(req.body);
+      const persona = await storage.createPersona(validatedData);
+      res.status(201).json(persona);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      console.error("Error creating persona:", error);
+      res.status(500).json({ message: "Failed to create persona" });
     }
   });
 

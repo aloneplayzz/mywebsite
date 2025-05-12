@@ -70,10 +70,10 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
-    updateUserSession(user, tokens);
+    const userSession = { claims: tokens.claims() };
+    updateUserSession(userSession, tokens);
     await upsertUser(tokens.claims());
-    verified(null, user);
+    verified(null, userSession);
   };
 
   for (const domain of process.env

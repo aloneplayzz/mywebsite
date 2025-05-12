@@ -2,13 +2,16 @@ import {
   users, insertUserSchema,
   chatrooms, insertChatroomSchema,
   personas, insertPersonaSchema,
+  personaCategories, insertPersonaCategorySchema,
   messages, insertMessageSchema,
   sessions,
   User, InsertUser, 
   Chatroom, InsertChatroom, 
-  Persona, InsertPersona, 
+  Persona, InsertPersona,
+  PersonaCategory, InsertPersonaCategory,
   Message, InsertMessage, 
-  ChatMessage, ChatroomWithStats
+  ChatMessage, ChatroomWithStats,
+  PersonaWithCategory
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -27,10 +30,16 @@ export interface IStorage {
   getChatrooms(): Promise<ChatroomWithStats[]>;
   createChatroom(chatroom: InsertChatroom): Promise<Chatroom>;
   
+  // Persona category operations
+  getPersonaCategory(id: number): Promise<PersonaCategory | undefined>;
+  getPersonaCategories(): Promise<PersonaCategory[]>;
+  createPersonaCategory(category: InsertPersonaCategory): Promise<PersonaCategory>;
+  
   // Persona operations
   getPersona(id: number): Promise<Persona | undefined>;
-  getPersonas(): Promise<Persona[]>;
+  getPersonas(): Promise<PersonaWithCategory[]>;
   createPersona(persona: InsertPersona): Promise<Persona>;
+  updatePersonaPopularity(id: number): Promise<void>;
   
   // Message operations
   getMessage(id: number): Promise<Message | undefined>;
@@ -214,6 +223,39 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  // Persona Category Methods
+  async getPersonaCategory(id: number): Promise<PersonaCategory | undefined> {
+    try {
+      const [category] = await db.select().from(personaCategories).where(eq(personaCategories.id, id));
+      return category;
+    } catch (error) {
+      console.error("Error fetching persona category:", error);
+      return undefined;
+    }
+  }
+  
+  async getPersonaCategories(): Promise<PersonaCategory[]> {
+    try {
+      return await db.select().from(personaCategories);
+    } catch (error) {
+      console.error("Error fetching persona categories:", error);
+      return [];
+    }
+  }
+  
+  async createPersonaCategory(insertCategory: InsertPersonaCategory): Promise<PersonaCategory> {
+    try {
+      const [category] = await db
+        .insert(personaCategories)
+        .values(insertCategory)
+        .returning();
+      return category;
+    } catch (error) {
+      console.error("Error creating persona category:", error);
+      throw error;
+    }
+  }
+  
   // Persona Methods
   async getPersona(id: number): Promise<Persona | undefined> {
     try {
@@ -225,9 +267,22 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getPersonas(): Promise<Persona[]> {
+  async getPersonas(): Promise<PersonaWithCategory[]> {
     try {
-      return await db.select().from(personas);
+      const allPersonas = await db.select().from(personas);
+      
+      // Fetch all categories at once to minimize database queries
+      const allCategories = await this.getPersonaCategories();
+      const categoriesMap = new Map(allCategories.map(cat => [cat.id, cat]));
+      
+      // Add category to each persona if available
+      return allPersonas.map(persona => {
+        const category = persona.categoryId ? categoriesMap.get(persona.categoryId) : undefined;
+        return {
+          ...persona,
+          category
+        };
+      });
     } catch (error) {
       console.error("Error fetching personas:", error);
       return [];
@@ -244,6 +299,25 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error creating persona:", error);
       throw error;
+    }
+  }
+  
+  async updatePersonaPopularity(id: number): Promise<void> {
+    try {
+      const persona = await this.getPersona(id);
+      if (!persona) return;
+      
+      const currentPopularity = persona.popularity || 0;
+      
+      await db
+        .update(personas)
+        .set({
+          popularity: currentPopularity + 1,
+          updatedAt: new Date()
+        })
+        .where(eq(personas.id, id));
+    } catch (error) {
+      console.error("Error updating persona popularity:", error);
     }
   }
   
