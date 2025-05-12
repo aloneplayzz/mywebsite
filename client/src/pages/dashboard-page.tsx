@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessagesSquare, Users, Sparkles } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Sidebar from "@/components/sidebar";
+import Sidebar from "@/components/sidebar-fixed";
 import MobileMenu from "@/components/mobile-menu";
 import RoomCard from "@/components/room-card";
 import CreateRoomModal from "@/components/create-room-modal";
@@ -43,7 +43,7 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <h1 className="text-xl font-bold text-destructive mb-2">Error Loading Chatrooms</h1>
-        <p className="text-neutral-600 mb-4">{error.message}</p>
+        <p className="text-muted-foreground mb-4">{error.message}</p>
         <Button onClick={() => window.location.reload()}>Try Again</Button>
       </div>
     );

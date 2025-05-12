@@ -10,7 +10,7 @@ import {
 import { websocketClient } from "@/lib/websocket";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import Sidebar from "@/components/sidebar";
+import Sidebar from "@/components/sidebar-fixed";
 import MobileMenu from "@/components/mobile-menu";
 import PersonaAvatar from "@/components/persona-avatar";
 import ChatMessageComponent from "@/components/chat-message";

@@ -129,21 +129,21 @@ export class DatabaseStorage implements IStorage {
         await this.createChatroom({
           name: "Sci-Fi Explorers",
           description: "Discuss space exploration with famous sci-fi characters",
-          createdBy: 0, // System created
+          createdBy: "system", // System created
           theme: "scifi"
         });
         
         await this.createChatroom({
           name: "Fantasy Adventurers",
           description: "Join medieval fantasy characters on epic quests and adventures",
-          createdBy: 0, // System created
+          createdBy: "system", // System created
           theme: "fantasy"
         });
         
         await this.createChatroom({
           name: "Historical Figures",
           description: "Chat with famous historical personalities from different eras",
-          createdBy: 0, // System created
+          createdBy: "system", // System created
           theme: "historical"
         });
       }

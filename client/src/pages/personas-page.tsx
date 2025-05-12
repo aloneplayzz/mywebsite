@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Loader2, Users } from "lucide-react";
-import Sidebar from "@/components/sidebar";
+import Sidebar from "@/components/sidebar-fixed";
 import MobileMenu from "@/components/mobile-menu";
 import { PersonaGrid } from "@/components/persona-grid";
 
