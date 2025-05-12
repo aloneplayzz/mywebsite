@@ -280,6 +280,7 @@ export default function ChatroomPage() {
               message={message}
               currentUserId={user?.id || ""}
               isTyping={message.personaId === personaTyping}
+              onStar={handleStarMessage}
             />
           ))}
           

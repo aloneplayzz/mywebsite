@@ -35,20 +35,22 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
   const { data: members, isLoading } = useQuery({
     queryKey: [`/api/chatrooms/${chatroomId}/members`],
     enabled: isOpen,
+    select: (data) => data || [], // Ensure we always have an array
   });
 
   // Fetch users to add
   const { data: users } = useQuery({
-    queryKey: ["/api/users"],
+    queryKey: ["/api/auth/users"],
     enabled: isOpen,
+    select: (data) => data || [], // Ensure we always have an array
   });
 
   // Check if current user is owner or moderator
-  const isOwner = members?.some(member => 
+  const isOwner = Array.isArray(members) && members.some(member => 
     member.userId === userId && member.role === "owner"
   );
   
-  const isModerator = members?.some(member => 
+  const isModerator = Array.isArray(members) && members.some(member => 
     member.userId === userId && (member.role === "moderator" || member.role === "owner")
   );
 

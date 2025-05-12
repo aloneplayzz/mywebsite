@@ -93,7 +93,11 @@ export default function ChatMessageComponent({
   // AI Persona message
   if (message.persona) {
     return (
-      <div className="flex items-end space-x-2">
+      <div 
+        className="flex items-end space-x-2 group"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
         <div className="flex-shrink-0">
           <img 
             src={message.persona.avatarUrl} 
@@ -113,6 +117,14 @@ export default function ChatMessageComponent({
             <p className="text-black dark:text-white">{message.message}</p>
           )}
         </div>
+        {isHovering && onStar && !isTyping && (
+          <button 
+            className="text-neutral-400 hover:text-yellow-500 transition-colors duration-200"
+            onClick={() => onStar(message)}
+          >
+            <Star className="h-4 w-4" />
+          </button>
+        )}
       </div>
     );
   }
