@@ -3,7 +3,13 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupWebsockets } from "./websocket";
-import { insertChatroomSchema, insertChatroomMemberSchema, insertPersonaSchema, insertPersonaCategorySchema } from "@shared/schema";
+import { 
+  insertChatroomSchema, 
+  insertChatroomMemberSchema, 
+  insertPersonaSchema, 
+  insertPersonaCategorySchema,
+  insertAttachmentSchema
+} from "@shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
 

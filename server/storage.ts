@@ -5,6 +5,7 @@ import {
   personas, insertPersonaSchema,
   personaCategories, insertPersonaCategorySchema,
   messages, insertMessageSchema,
+  attachments, insertAttachmentSchema,
   sessions,
   User, InsertUser, 
   Chatroom, InsertChatroom, 
@@ -12,6 +13,7 @@ import {
   Persona, InsertPersona,
   PersonaCategory, InsertPersonaCategory,
   Message, InsertMessage, 
+  Attachment, InsertAttachment,
   ChatMessage, ChatroomWithStats,
   PersonaWithCategory
 } from "@shared/schema";
@@ -375,6 +377,7 @@ export class DatabaseStorage implements IStorage {
       return Promise.all(allMessages.map(async message => {
         let user: User | undefined;
         let persona: Persona | undefined;
+        let attachments: Attachment[] | undefined;
         
         if (message.userId) {
           user = await this.getUser(message.userId.toString());
@@ -384,10 +387,15 @@ export class DatabaseStorage implements IStorage {
           persona = await this.getPersona(message.personaId);
         }
         
+        if (message.hasAttachment) {
+          attachments = await this.getAttachmentsByMessageId(message.id);
+        }
+        
         return {
           ...message,
           user,
-          persona
+          persona,
+          attachments
         };
       }));
     } catch (error) {
@@ -406,6 +414,54 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error creating message:", error);
       throw error;
+    }
+  }
+  
+  async starMessage(messageId: number, isStarred: boolean): Promise<Message> {
+    try {
+      const [message] = await db
+        .update(messages)
+        .set({ isStarred })
+        .where(eq(messages.id, messageId))
+        .returning();
+      return message;
+    } catch (error) {
+      console.error("Error starring message:", error);
+      throw error;
+    }
+  }
+  
+  async createAttachment(attachment: InsertAttachment): Promise<Attachment> {
+    try {
+      const [newAttachment] = await db
+        .insert(attachments)
+        .values(attachment)
+        .returning();
+      
+      // Update the message to indicate it has an attachment
+      if (attachment.messageId) {
+        await db
+          .update(messages)
+          .set({ hasAttachment: true })
+          .where(eq(messages.id, attachment.messageId));
+      }
+      
+      return newAttachment;
+    } catch (error) {
+      console.error("Error creating attachment:", error);
+      throw error;
+    }
+  }
+  
+  async getAttachmentsByMessageId(messageId: number): Promise<Attachment[]> {
+    try {
+      return await db
+        .select()
+        .from(attachments)
+        .where(eq(attachments.messageId, messageId));
+    } catch (error) {
+      console.error("Error fetching attachments:", error);
+      return [];
     }
   }
   
