@@ -1,16 +1,21 @@
+import { useState } from "react";
 import { ChatMessage } from "@shared/schema";
+import { Star } from "lucide-react";
 
 interface ChatMessageComponentProps {
   message: ChatMessage;
   currentUserId: string;
   isTyping?: boolean;
+  onStar?: (message: ChatMessage) => void;
 }
 
 export default function ChatMessageComponent({ 
   message, 
   currentUserId,
-  isTyping = false
+  isTyping = false,
+  onStar
 }: ChatMessageComponentProps) {
+  const [isHovering, setIsHovering] = useState(false);
   // System message
   if (!message.user && !message.persona) {
     return (
@@ -25,7 +30,19 @@ export default function ChatMessageComponent({
   // User message (current user)
   if (message.user && message.userId === currentUserId) {
     return (
-      <div className="flex items-end justify-end space-x-2">
+      <div 
+        className="flex items-end justify-end space-x-2 group"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        {isHovering && onStar && (
+          <button 
+            className="text-neutral-400 hover:text-yellow-500 transition-colors duration-200"
+            onClick={() => onStar(message)}
+          >
+            <Star className="h-4 w-4" />
+          </button>
+        )}
         <div className="bg-primary text-white px-4 py-2 rounded-xl rounded-br-none max-w-[80%]">
           <p>{message.message}</p>
         </div>
@@ -43,7 +60,11 @@ export default function ChatMessageComponent({
   // User message (other user)
   if (message.user && message.userId !== currentUserId) {
     return (
-      <div className="flex items-end space-x-2">
+      <div 
+        className="flex items-end space-x-2 group"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
         <div className="flex-shrink-0">
           <img 
             src={message.user.profileImageUrl || 'https://replit.com/public/images/mark.png'} 
@@ -57,6 +78,14 @@ export default function ChatMessageComponent({
           </div>
           <p className="text-black dark:text-white">{message.message}</p>
         </div>
+        {isHovering && onStar && (
+          <button 
+            className="text-neutral-400 hover:text-yellow-500 transition-colors duration-200"
+            onClick={() => onStar(message)}
+          >
+            <Star className="h-4 w-4" />
+          </button>
+        )}
       </div>
     );
   }

@@ -307,6 +307,26 @@ export default function ChatroomPage() {
           selectedPersona={selectedPersona}
         />
       </div>
+      
+      {/* Dialogs */}
+      <MembersDialog 
+        isOpen={isMembersDialogOpen} 
+        onOpenChange={setIsMembersDialogOpen} 
+        chatroomId={roomId} 
+      />
+      
+      <ShareDialog 
+        isOpen={isShareDialogOpen} 
+        onOpenChange={setIsShareDialogOpen} 
+        chatroomId={roomId}
+        chatroomName={chatroom.name}
+      />
+      
+      <StarredMessagesDialog 
+        isOpen={isStarredDialogOpen} 
+        onOpenChange={setIsStarredDialogOpen} 
+        chatroomId={roomId}
+      />
     </div>
   );
 }
