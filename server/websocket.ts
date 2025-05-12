@@ -113,7 +113,7 @@ export function setupWebsockets(server: Server) {
     // Store the user message
     const userMessage = await storage.createMessage({
       roomId,
-      userId: userId.toString(),
+      userId: userId.toString(), // Convert number to string because userId in schema is varchar
       message,
       personaId: undefined,
     });

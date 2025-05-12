@@ -74,19 +74,16 @@ export async function setupAuth(app: Express) {
     try {
       const claims = tokens.claims();
       const user = await upsertUser(claims);
-      // Create a clean session object
-      const userSession = {
+      // Create a session object that matches our User type
+      verified(null, {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
         profileImageUrl: user.profileImageUrl,
-        claims,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        expires_at: claims?.exp || 0
-      };
-      verified(null, userSession);
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      });
     } catch (error) {
       console.error("Auth verification error:", error);
       verified(error as Error);
