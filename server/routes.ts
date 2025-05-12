@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupWebsockets } from "./websocket";
-import { insertChatroomSchema, insertPersonaSchema, insertPersonaCategorySchema } from "@shared/schema";
+import { insertChatroomSchema, insertChatroomMemberSchema, insertPersonaSchema, insertPersonaCategorySchema } from "@shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
 
@@ -156,6 +156,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+  
+  // Chatroom members API
+  app.get("/api/chatrooms/:id/members", async (req, res) => {
+    try {
+      const chatroomId = parseInt(req.params.id);
+      if (isNaN(chatroomId)) {
+        return res.status(400).json({ message: "Invalid chatroom ID" });
+      }
+
+      const chatroom = await storage.getChatroom(chatroomId);
+      if (!chatroom) {
+        return res.status(404).json({ message: "Chatroom not found" });
+      }
+
+      const members = await storage.getChatroomMembers(chatroomId);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching chatroom members:", error);
+      res.status(500).json({ message: "Failed to fetch chatroom members" });
+    }
+  });
+  
+  app.post("/api/chatrooms/:id/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const chatroomId = parseInt(req.params.id);
+      if (isNaN(chatroomId)) {
+        return res.status(400).json({ message: "Invalid chatroom ID" });
+      }
+      
+      const chatroom = await storage.getChatroom(chatroomId);
+      if (!chatroom) {
+        return res.status(404).json({ message: "Chatroom not found" });
+      }
+      
+      // Only chatroom owner or moderator can add members with specific roles
+      if (req.body.role && req.body.role !== 'member') {
+        const isOwnerOrMod = await storage.isChatroomModerator(chatroomId, req.user.claims.sub);
+        if (!isOwnerOrMod) {
+          return res.status(403).json({ message: "You don't have permission to add members with this role" });
+        }
+      }
+      
+      const validatedData = insertChatroomMemberSchema.parse({
+        chatroomId,
+        userId: req.body.userId,
+        role: req.body.role || 'member'
+      });
+      
+      const member = await storage.addChatroomMember(validatedData.chatroomId, validatedData.userId, validatedData.role);
+      res.status(201).json(member);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error adding chatroom member:", error);
+      res.status(500).json({ message: "Failed to add chatroom member" });
+    }
+  });
+  
+  app.put("/api/chatrooms/:id/members/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const chatroomId = parseInt(req.params.id);
+      if (isNaN(chatroomId)) {
+        return res.status(400).json({ message: "Invalid chatroom ID" });
+      }
+      
+      const chatroom = await storage.getChatroom(chatroomId);
+      if (!chatroom) {
+        return res.status(404).json({ message: "Chatroom not found" });
+      }
+      
+      // Only chatroom owner can change roles to owner
+      // Only chatroom owner or moderator can update member roles
+      if (req.body.role === 'owner') {
+        const isOwner = await storage.isChatroomOwner(chatroomId, req.user.claims.sub);
+        if (!isOwner) {
+          return res.status(403).json({ message: "Only the chatroom owner can assign ownership" });
+        }
+      } else {
+        const isOwnerOrMod = await storage.isChatroomModerator(chatroomId, req.user.claims.sub);
+        if (!isOwnerOrMod) {
+          return res.status(403).json({ message: "You don't have permission to change member roles" });
+        }
+      }
+      
+      const { userId } = req.params;
+      const { role } = req.body;
+      
+      if (!role || !['owner', 'moderator', 'member'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      
+      const member = await storage.updateChatroomMemberRole(chatroomId, userId, role);
+      res.json(member);
+    } catch (error) {
+      console.error("Error updating chatroom member:", error);
+      res.status(500).json({ message: "Failed to update chatroom member" });
+    }
+  });
+  
+  app.delete("/api/chatrooms/:id/members/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const chatroomId = parseInt(req.params.id);
+      if (isNaN(chatroomId)) {
+        return res.status(400).json({ message: "Invalid chatroom ID" });
+      }
+      
+      const chatroom = await storage.getChatroom(chatroomId);
+      if (!chatroom) {
+        return res.status(404).json({ message: "Chatroom not found" });
+      }
+      
+      const { userId } = req.params;
+      
+      // Users can remove themselves, or mods/owners can remove others
+      if (userId !== req.user.claims.sub) {
+        const isOwnerOrMod = await storage.isChatroomModerator(chatroomId, req.user.claims.sub);
+        if (!isOwnerOrMod) {
+          return res.status(403).json({ message: "You don't have permission to remove members" });
+        }
+        
+        // Cannot remove owners if you're a moderator
+        const memberToRemove = await storage.getChatroomMember(chatroomId, userId);
+        if (memberToRemove?.role === 'owner' && !await storage.isChatroomOwner(chatroomId, req.user.claims.sub)) {
+          return res.status(403).json({ message: "Moderators cannot remove owners" });
+        }
+      }
+      
+      await storage.removeChatroomMember(chatroomId, userId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing chatroom member:", error);
+      res.status(500).json({ message: "Failed to remove chatroom member" });
     }
   });
 
