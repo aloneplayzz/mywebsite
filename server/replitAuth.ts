@@ -30,7 +30,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: sessionTtl,
     },
   });
@@ -47,9 +48,9 @@ function updateUserSession(
 }
 
 async function upsertUser(
-  claims: any,
+  claims: any
 ) {
-  await storage.upsertUser({
+  return await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
@@ -70,10 +71,26 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const userSession = { claims: tokens.claims() };
-    updateUserSession(userSession, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, userSession);
+    try {
+      const claims = tokens.claims();
+      const user = await upsertUser(claims);
+      // Create a clean session object
+      const userSession = {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImageUrl: user.profileImageUrl,
+        claims,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expires_at: claims?.exp || 0
+      };
+      verified(null, userSession);
+    } catch (error) {
+      console.error("Auth verification error:", error);
+      verified(error as Error);
+    }
   };
 
   for (const domain of process.env
