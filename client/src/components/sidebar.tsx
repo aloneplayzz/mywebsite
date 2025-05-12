@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
+import { HelpDialog } from "@/components/help-dialog";
 
 interface SidebarProps {
   currentPage: "dashboard" | "chatroom";
@@ -25,6 +26,7 @@ export default function Sidebar({ currentPage, onNewRoom, isOpen }: SidebarProps
   const { user, logoutMutation } = useAuth();
   const [location, navigate] = useLocation();
   const { theme, setTheme } = useTheme();
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
   
   const {
     data: chatrooms,
