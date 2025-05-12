@@ -31,8 +31,8 @@ export default function ChatMessageComponent({
         </div>
         <div className="flex-shrink-0">
           <img 
-            src={message.user.avatar} 
-            alt={message.user.username} 
+            src={message.user.profileImageUrl || 'https://replit.com/public/images/mark.png'} 
+            alt={message.user.firstName || message.user.email || 'User'} 
             className="w-8 h-8 rounded-full object-cover"
           />
         </div>
@@ -46,13 +46,15 @@ export default function ChatMessageComponent({
       <div className="flex items-end space-x-2">
         <div className="flex-shrink-0">
           <img 
-            src={message.user.avatar} 
-            alt={message.user.username} 
+            src={message.user.profileImageUrl || 'https://replit.com/public/images/mark.png'} 
+            alt={message.user.firstName || message.user.email || 'User'} 
             className="w-8 h-8 rounded-full object-cover"
           />
         </div>
         <div className="bg-white border border-neutral-200 px-4 py-2 rounded-xl rounded-bl-none max-w-[80%] shadow-sm">
-          <div className="text-xs text-neutral-500 font-medium mb-1">{message.user.username}</div>
+          <div className="text-xs text-neutral-500 font-medium mb-1">
+            {message.user.firstName || message.user.email || 'User'}
+          </div>
           <p>{message.message}</p>
         </div>
       </div>
