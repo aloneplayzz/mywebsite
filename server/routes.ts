@@ -49,7 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertChatroomSchema.parse({
         ...req.body,
-        createdBy: parseInt(req.user.claims.sub) || 0
+        createdBy: req.user.id
       });
 
       const chatroom = await storage.createChatroom(validatedData);

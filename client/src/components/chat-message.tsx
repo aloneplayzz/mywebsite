@@ -2,7 +2,7 @@ import { ChatMessage } from "@shared/schema";
 
 interface ChatMessageComponentProps {
   message: ChatMessage;
-  currentUserId: number;
+  currentUserId: string;
   isTyping?: boolean;
 }
 

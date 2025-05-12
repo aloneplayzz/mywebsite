@@ -247,7 +247,7 @@ export default function ChatroomPage() {
             <ChatMessageComponent
               key={message.id}
               message={message}
-              currentUserId={user?.id || 0}
+              currentUserId={user?.id || ""}
               isTyping={message.personaId === personaTyping}
             />
           ))}

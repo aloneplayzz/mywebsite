@@ -5,7 +5,7 @@ import { generateAIResponse } from './openai';
 import { ChatMessage, InsertMessage } from '@shared/schema';
 
 interface WebSocketClient extends WebSocket {
-  userId?: number;
+  userId?: string;
   roomId?: number;
 }
 
@@ -59,7 +59,7 @@ export function setupWebsockets(server: Server) {
   });
   
   // Function to handle room joining
-  function handleJoinRoom(ws: WebSocketClient, { userId, roomId }: { userId: number, roomId: number }) {
+  function handleJoinRoom(ws: WebSocketClient, { userId, roomId }: { userId: string, roomId: number }) {
     ws.userId = userId;
     ws.roomId = roomId;
     
@@ -113,7 +113,7 @@ export function setupWebsockets(server: Server) {
     // Store the user message
     const userMessage = await storage.createMessage({
       roomId,
-      userId: userId.toString(), // Convert number to string because userId in schema is varchar
+      userId, // userId is already a string
       message,
       personaId: undefined,
     });

@@ -7,7 +7,7 @@ class WebSocketClient {
   private socket: WebSocket | null = null;
   private messageCallbacks: MessageCallback[] = [];
   private statusCallbacks: StatusCallback[] = [];
-  private userId: number | null = null;
+  private userId: string | null = null;
   private roomId: number | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
@@ -145,7 +145,7 @@ class WebSocketClient {
     }
   }
 
-  public joinRoom(userId: number, roomId: number) {
+  public joinRoom(userId: string, roomId: number) {
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.userId = userId;
       this.roomId = roomId;
