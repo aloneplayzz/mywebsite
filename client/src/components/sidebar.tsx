@@ -89,7 +89,7 @@ export default function Sidebar({ currentPage, onNewRoom, isOpen }: SidebarProps
       {/* Room Navigation */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="font-semibold text-neutral-900">Chatrooms</h2>
+          <h2 className="font-semibold">Chatrooms</h2>
           <Button 
             size="sm" 
             variant="ghost" 
@@ -106,7 +106,7 @@ export default function Sidebar({ currentPage, onNewRoom, isOpen }: SidebarProps
         
         {/* Room List */}
         {isLoading ? (
-          <div className="py-4 text-center text-neutral-500">
+          <div className="py-4 text-center text-muted-foreground">
             <svg className="animate-spin h-5 w-5 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -121,18 +121,28 @@ export default function Sidebar({ currentPage, onNewRoom, isOpen }: SidebarProps
               // Theme styles
               const getThemeStyles = () => {
                 if (!isActive) {
-                  return "bg-white border-neutral-200 hover:border-primary-300";
+                  return theme === 'dark' 
+                    ? "bg-background border-border hover:border-primary/30" 
+                    : "bg-background border-border hover:border-primary/30";
                 }
                 
                 switch (room.theme) {
                   case 'fantasy':
-                    return "bg-purple-50 border-purple-200";
+                    return theme === 'dark' 
+                      ? "bg-purple-950/20 border-purple-800/30" 
+                      : "bg-purple-50 border-purple-200";
                   case 'scifi':
-                    return "bg-blue-50 border-blue-200";
+                    return theme === 'dark' 
+                      ? "bg-blue-950/20 border-blue-800/30" 
+                      : "bg-blue-50 border-blue-200";
                   case 'historical':
-                    return "bg-amber-50 border-amber-200";
+                    return theme === 'dark' 
+                      ? "bg-amber-950/20 border-amber-800/30" 
+                      : "bg-amber-50 border-amber-200";
                   default:
-                    return "bg-primary-50 border-primary-200";
+                    return theme === 'dark' 
+                      ? "bg-primary-950/20 border-primary-800/30" 
+                      : "bg-primary-50 border-primary-200";
                 }
               };
               
@@ -143,20 +153,20 @@ export default function Sidebar({ currentPage, onNewRoom, isOpen }: SidebarProps
                   onClick={() => navigate(`/chatroom/${room.id}`)}
                 >
                   <div className="flex justify-between items-start">
-                    <h3 className={`font-medium ${isActive ? "text-primary-700" : ""}`}>
+                    <h3 className={`font-medium ${isActive ? "text-primary" : ""}`}>
                       {room.name}
                     </h3>
                     {room.activeUsers > 0 ? (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
                         {room.activeUsers} active
                       </span>
                     ) : (
-                      <span className="text-xs bg-neutral-100 text-neutral-500 px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
                         inactive
                       </span>
                     )}
                   </div>
-                  <p className={`text-sm ${isActive ? "text-primary-600" : "text-neutral-500"} mt-1 line-clamp-2`}>
+                  <p className={`text-sm ${isActive ? "text-primary/90" : "text-muted-foreground"} mt-1 line-clamp-2`}>
                     {room.description}
                   </p>
                 </div>
@@ -167,15 +177,31 @@ export default function Sidebar({ currentPage, onNewRoom, isOpen }: SidebarProps
       </div>
       
       {/* Sidebar Footer */}
-      <div className="p-4 border-t border-neutral-200">
+      <div className="p-4 border-t border-border">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="icon" title="Settings">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            title="Settings" 
+            onClick={() => {
+              // Open a settings modal or navigate to settings page
+              navigate("/settings");
+            }}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
           </Button>
-          <Button variant="ghost" size="icon" title="Help">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            title="Help"
+            onClick={() => {
+              // Open a help dialog with instructions
+              window.open('https://github.com/your-username/ai-persona-chat/issues', '_blank');
+            }}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
@@ -211,7 +237,7 @@ export default function Sidebar({ currentPage, onNewRoom, isOpen }: SidebarProps
             size="icon" 
             onClick={() => logoutMutation.mutate()}
             title="Logout"
-            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
