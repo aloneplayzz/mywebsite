@@ -179,14 +179,20 @@ export default function ChatroomPage() {
       {/* Main content */}
       <div className="flex-1 flex flex-col h-screen">
         {/* Room Header */}
-        <header className="bg-white border-b border-neutral-200 p-4 shadow-sm">
+        <header className="bg-white dark:bg-gray-800 border-b border-neutral-200 dark:border-gray-700 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <h1 className="font-bold text-lg">{chatroom.name}</h1>
-              <span className="ml-2 bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">{activeUsers} active</span>
+              <h1 className="font-bold text-lg dark:text-white">{chatroom.name}</h1>
+              <span className="ml-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs px-2 py-0.5 rounded-full">{activeUsers} active</span>
             </div>
             <div className="flex items-center space-x-3">
-              <button className="text-neutral-500 hover:text-neutral-700">
+              <button 
+                className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 hover:dark:text-neutral-200"
+                onClick={() => toast({
+                  title: "Members",
+                  description: "Members feature coming soon!"
+                })}
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                   <circle cx="9" cy="7" r="4" />
@@ -194,7 +200,13 @@ export default function ChatroomPage() {
                   <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
               </button>
-              <button className="text-neutral-500 hover:text-neutral-700">
+              <button 
+                className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 hover:dark:text-neutral-200"
+                onClick={() => toast({
+                  title: "Share",
+                  description: "Share chatroom feature coming soon!"
+                })}
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="18" cy="5" r="3" />
                   <circle cx="6" cy="12" r="3" />
@@ -203,20 +215,26 @@ export default function ChatroomPage() {
                   <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
                 </svg>
               </button>
-              <button className="text-neutral-500 hover:text-neutral-700">
+              <button 
+                className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 hover:dark:text-neutral-200"
+                onClick={() => toast({
+                  title: "Star Chatroom",
+                  description: "Starred messages feature coming soon!"
+                })}
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
               </button>
             </div>
           </div>
-          <p className="text-neutral-500 text-sm mt-1">{chatroom.description}</p>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">{chatroom.description}</p>
         </header>
         
         {/* Persona Selection */}
         {personas && (
-          <div className="bg-white border-b border-neutral-200 p-4">
-            <h2 className="font-medium text-sm text-neutral-500 mb-3">Select a persona to chat with:</h2>
+          <div className="bg-white dark:bg-gray-800 border-b border-neutral-200 dark:border-gray-700 p-4">
+            <h2 className="font-medium text-sm text-neutral-500 dark:text-neutral-400 mb-3">Select a persona to chat with:</h2>
             <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
               {personas.map(persona => (
                 <PersonaAvatar
@@ -233,11 +251,11 @@ export default function ChatroomPage() {
         {/* Chat Messages Area */}
         <div 
           ref={chatContainerRef}
-          className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-r from-primary-50/30 to-indigo-50/30"
+          className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-r from-primary-50/30 to-indigo-50/30 dark:from-gray-900/30 dark:to-gray-800/30"
         >
           {/* Welcome message */}
           <div className="flex justify-center">
-            <div className="bg-neutral-100 text-neutral-500 text-sm px-4 py-2 rounded-full">
+            <div className="bg-neutral-100 dark:bg-gray-700 text-neutral-500 dark:text-neutral-300 text-sm px-4 py-2 rounded-full">
               Welcome to {chatroom.name}! {selectedPersona ? `You're chatting with ${selectedPersona.name}` : "Select a persona to chat with"}
             </div>
           </div>

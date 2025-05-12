@@ -72,8 +72,8 @@ export default function ChatMessageComponent({
             className="w-8 h-8 rounded-full object-cover"
           />
         </div>
-        <div className="bg-white border border-neutral-200 px-4 py-2 rounded-xl rounded-bl-none max-w-[80%] shadow-sm">
-          <div className="text-xs text-primary font-medium mb-1">{message.persona.name}</div>
+        <div className="bg-white dark:bg-gray-800 border border-neutral-200 dark:border-gray-700 px-4 py-2 rounded-xl rounded-bl-none max-w-[80%] shadow-sm">
+          <div className="text-xs text-primary dark:text-primary font-medium mb-1">{message.persona.name}</div>
           {isTyping ? (
             <div className="flex space-x-1">
               <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce"></div>
@@ -81,7 +81,7 @@ export default function ChatMessageComponent({
               <div className="w-2 h-2 bg-primary/80 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
             </div>
           ) : (
-            <p>{message.message}</p>
+            <p className="text-black dark:text-white">{message.message}</p>
           )}
         </div>
       </div>
