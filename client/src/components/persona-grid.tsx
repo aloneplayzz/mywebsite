@@ -12,7 +12,7 @@ import { PlusIcon, TrendingUpIcon } from "lucide-react";
 export function PersonaGrid() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   
-  const { data: personas, isLoading } = useQuery<PersonaWithCategory[]>({
+  const { data: personas = [], isLoading } = useQuery<PersonaWithCategory[]>({
     queryKey: ["/api/personas"],
   });
 

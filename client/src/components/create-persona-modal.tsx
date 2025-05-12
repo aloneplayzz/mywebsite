@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { insertPersonaSchema, type InsertPersona } from "@shared/schema";
+import { insertPersonaSchema, type InsertPersona, type PersonaCategory } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -72,7 +72,7 @@ export default function CreatePersonaModal({ isOpen, onClose }: CreatePersonaMod
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Fetch categories for the dropdown
-  const { data: categories, isLoading: isCategoriesLoading } = useQuery({
+  const { data: categories = [], isLoading: isCategoriesLoading } = useQuery<PersonaCategory[]>({
     queryKey: ["/api/persona-categories"],
   });
   
@@ -110,7 +110,7 @@ export default function CreatePersonaModal({ isOpen, onClose }: CreatePersonaMod
       samplePrompt: "How would you respond to: ",
       avatarUrl: "",
       categoryId: null,
-      customizable: true,
+      customizable: true as boolean,
     },
   });
   
@@ -263,7 +263,7 @@ export default function CreatePersonaModal({ isOpen, onClose }: CreatePersonaMod
                   </div>
                   <FormControl>
                     <Switch
-                      checked={field.value}
+                      checked={!!field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
