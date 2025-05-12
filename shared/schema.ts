@@ -42,13 +42,31 @@ export const insertChatroomSchema = createInsertSchema(chatrooms).pick({
   theme: true,
 });
 
-// Persona model
+// Persona categories
+export const personaCategories = pgTable("persona_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPersonaCategorySchema = createInsertSchema(personaCategories).pick({
+  name: true,
+  description: true,
+});
+
+// Persona model with enhanced features
 export const personas = pgTable("personas", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull(),
   samplePrompt: text("sample_prompt").notNull(),
   avatarUrl: text("avatar_url").notNull(),
+  categoryId: integer("category_id"),
+  popularity: integer("popularity").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  customizable: boolean("customizable").default(false),
 });
 
 export const insertPersonaSchema = createInsertSchema(personas).pick({
@@ -56,6 +74,8 @@ export const insertPersonaSchema = createInsertSchema(personas).pick({
   description: true,
   samplePrompt: true,
   avatarUrl: true,
+  categoryId: true,
+  customizable: true,
 });
 
 // Message model
@@ -82,6 +102,9 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Chatroom = typeof chatrooms.$inferSelect;
 export type InsertChatroom = z.infer<typeof insertChatroomSchema>;
 
+export type PersonaCategory = typeof personaCategories.$inferSelect;
+export type InsertPersonaCategory = z.infer<typeof insertPersonaCategorySchema>;
+
 export type Persona = typeof personas.$inferSelect;
 export type InsertPersona = z.infer<typeof insertPersonaSchema>;
 
@@ -89,11 +112,16 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
 // Extended types for frontend
+export type PersonaWithCategory = Persona & {
+  category?: PersonaCategory;
+};
+
 export type ChatMessage = Message & {
   user?: User;
-  persona?: Persona;
+  persona?: PersonaWithCategory;
 };
 
 export type ChatroomWithStats = Chatroom & {
   activeUsers: number;
+  messageCount?: number;
 };
