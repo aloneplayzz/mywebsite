@@ -19,7 +19,6 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  isAdmin: boolean("is_admin").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -34,7 +33,6 @@ export const chatrooms = pgTable("chatrooms", {
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   theme: text("theme").default("default"),
-  isPublic: boolean("is_public").default(true),
 });
 
 // Chatroom Member model with roles
@@ -51,7 +49,6 @@ export const insertChatroomSchema = createInsertSchema(chatrooms).pick({
   description: true,
   createdBy: true,
   theme: true,
-  isPublic: true,
 });
 
 export const insertChatroomMemberSchema = createInsertSchema(chatroomMembers).pick({
@@ -119,6 +116,9 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Chatroom = typeof chatrooms.$inferSelect;
 export type InsertChatroom = z.infer<typeof insertChatroomSchema>;
+
+export type ChatroomMember = typeof chatroomMembers.$inferSelect;
+export type InsertChatroomMember = z.infer<typeof insertChatroomMemberSchema>;
 
 export type PersonaCategory = typeof personaCategories.$inferSelect;
 export type InsertPersonaCategory = z.infer<typeof insertPersonaCategorySchema>;
