@@ -2,7 +2,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { storage } from './storage';
 import { generateAIResponse } from './openai';
-import { ChatMessage, InsertMessage } from '@shared/schema';
+import { ChatMessage, InsertMessage, InsertAttachment, attachmentTypes } from '@shared/schema';
 
 interface WebSocketClient extends WebSocket {
   userId?: string;
@@ -35,6 +35,14 @@ export function setupWebsockets(server: Server) {
             
           case 'send_message':
             await handleSendMessage(ws, data.payload);
+            break;
+            
+          case 'send_attachment':
+            await handleSendAttachment(ws, data.payload);
+            break;
+            
+          case 'send_voice_message':
+            await handleSendVoiceMessage(ws, data.payload);
             break;
             
           case 'ping':

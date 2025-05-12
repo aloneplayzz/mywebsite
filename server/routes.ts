@@ -165,6 +165,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // API route for starring messages
+  app.patch("/api/messages/:id/star", isAuthenticated, async (req, res) => {
+    try {
+      const messageId = parseInt(req.params.id);
+      if (isNaN(messageId)) {
+        return res.status(400).json({ message: "Invalid message ID" });
+      }
+      
+      const { isStarred } = req.body;
+      if (typeof isStarred !== 'boolean') {
+        return res.status(400).json({ message: "isStarred must be a boolean" });
+      }
+      
+      const message = await storage.starMessage(messageId, isStarred);
+      res.json(message);
+    } catch (error) {
+      console.error("Error starring message:", error);
+      res.status(500).json({ message: "Failed to star message" });
+    }
+  });
+  
+  // API routes for attachments
+  app.post("/api/messages/:id/attachments", isAuthenticated, async (req, res) => {
+    try {
+      const messageId = parseInt(req.params.id);
+      if (isNaN(messageId)) {
+        return res.status(400).json({ message: "Invalid message ID" });
+      }
+      
+      const message = await storage.getMessage(messageId);
+      if (!message) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+      
+      try {
+        const attachmentData = insertAttachmentSchema.parse({
+          ...req.body,
+          messageId,
+        });
+        
+        const attachment = await storage.createAttachment(attachmentData);
+        res.status(201).json(attachment);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return res.status(400).json({ 
+            message: "Invalid attachment data", 
+            errors: error.errors 
+          });
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error("Error creating attachment:", error);
+      res.status(500).json({ message: "Failed to create attachment" });
+    }
+  });
+  
+  app.get("/api/messages/:id/attachments", async (req, res) => {
+    try {
+      const messageId = parseInt(req.params.id);
+      if (isNaN(messageId)) {
+        return res.status(400).json({ message: "Invalid message ID" });
+      }
+      
+      const attachments = await storage.getAttachmentsByMessageId(messageId);
+      res.json(attachments);
+    } catch (error) {
+      console.error("Error fetching attachments:", error);
+      res.status(500).json({ message: "Failed to fetch attachments" });
+    }
+  });
+  
   // Chatroom members API
   app.get("/api/chatrooms/:id/members", async (req, res) => {
     try {
