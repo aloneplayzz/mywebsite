@@ -9,12 +9,15 @@ import {
 } from "@shared/schema";
 import { websocketClient } from "@/lib/websocket";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users, Share2, Star } from "lucide-react";
 import Sidebar from "@/components/sidebar-fixed";
 import MobileMenu from "@/components/mobile-menu";
 import PersonaAvatar from "@/components/persona-avatar";
 import ChatMessageComponent from "@/components/chat-message";
 import MessageInput from "@/components/message-input";
+import { MembersDialog } from "@/components/members-dialog";
+import { ShareDialog } from "@/components/share-dialog";
+import { StarredMessagesDialog } from "@/components/starred-messages-dialog";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ChatroomPage() {
@@ -29,6 +32,11 @@ export default function ChatroomPage() {
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [personaTyping, setPersonaTyping] = useState<number | null>(null);
   const [activeUsers, setActiveUsers] = useState<number>(0);
+  
+  // Dialog states
+  const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isStarredDialogOpen, setIsStarredDialogOpen] = useState(false);
   
   // Refs
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -141,6 +149,33 @@ export default function ChatroomPage() {
     websocketClient.sendMessage(message, selectedPersona?.id);
   };
   
+  // Star message handler
+  const handleStarMessage = (message: ChatMessage) => {
+    // Get existing starred messages
+    const savedMessages = localStorage.getItem(`starred-messages-${roomId}`);
+    let starredMessages: ChatMessage[] = savedMessages ? JSON.parse(savedMessages) : [];
+    
+    // Check if message is already starred
+    const isAlreadyStarred = starredMessages.some(m => m.id === message.id);
+    
+    if (isAlreadyStarred) {
+      toast({
+        title: "Already starred",
+        description: "This message is already in your starred messages"
+      });
+      return;
+    }
+    
+    // Add message to starred
+    starredMessages.push(message);
+    localStorage.setItem(`starred-messages-${roomId}`, JSON.stringify(starredMessages));
+    
+    toast({
+      title: "Message starred",
+      description: "Message added to your starred messages"
+    });
+  };
+  
   if (isRoomLoading || isPersonasLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -188,43 +223,21 @@ export default function ChatroomPage() {
             <div className="flex items-center space-x-3">
               <button 
                 className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 hover:dark:text-neutral-200"
-                onClick={() => toast({
-                  title: "Members",
-                  description: "Members feature coming soon!"
-                })}
+                onClick={() => setIsMembersDialogOpen(true)}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
+                <Users className="h-5 w-5" />
               </button>
               <button 
                 className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 hover:dark:text-neutral-200"
-                onClick={() => toast({
-                  title: "Share",
-                  description: "Share chatroom feature coming soon!"
-                })}
+                onClick={() => setIsShareDialogOpen(true)}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="18" cy="5" r="3" />
-                  <circle cx="6" cy="12" r="3" />
-                  <circle cx="18" cy="19" r="3" />
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-                </svg>
+                <Share2 className="h-5 w-5" />
               </button>
               <button 
                 className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 hover:dark:text-neutral-200"
-                onClick={() => toast({
-                  title: "Star Chatroom",
-                  description: "Starred messages feature coming soon!"
-                })}
+                onClick={() => setIsStarredDialogOpen(true)}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
+                <Star className="h-5 w-5" />
               </button>
             </div>
           </div>
