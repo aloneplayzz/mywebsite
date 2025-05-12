@@ -64,7 +64,7 @@ export function setupWebsockets(server: Server) {
     ws.roomId = roomId;
     
     // Add user to active users list
-    storage.addActiveUser(roomId, userId);
+    storage.addActiveUser(roomId, userId.toString());
     
     // Broadcast user joined to all clients in the room
     broadcastToRoom(roomId, {
@@ -85,7 +85,7 @@ export function setupWebsockets(server: Server) {
     
     if (userId && roomId) {
       // Remove user from active users list
-      storage.removeActiveUser(roomId, userId);
+      storage.removeActiveUser(roomId, userId.toString());
       
       // Broadcast user left to all clients in the room
       broadcastToRoom(roomId, {
@@ -113,13 +113,13 @@ export function setupWebsockets(server: Server) {
     // Store the user message
     const userMessage = await storage.createMessage({
       roomId,
-      userId,
+      userId: userId.toString(),
       message,
       personaId: undefined,
     });
     
     // Augment with user info
-    const user = await storage.getUser(userId);
+    const user = await storage.getUser(userId.toString());
     const chatMessage: ChatMessage = {
       ...userMessage,
       user
