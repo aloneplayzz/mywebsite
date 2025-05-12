@@ -236,7 +236,8 @@ export function setupWebsockets(server: Server) {
     
     try {
       // Validate attachment type
-      if (!Object.values(attachmentTypes.enumValues).includes(attachmentType)) {
+      const validTypes = ['image', 'audio', 'video', 'document', 'voice_message'] as const;
+      if (!validTypes.includes(attachmentType as any)) {
         return sendErrorToClient(ws, 'Invalid attachment type');
       }
       
