@@ -254,7 +254,7 @@ export default function CreatePersonaModal({ isOpen, onClose }: CreatePersonaMod
               control={form.control}
               name="customizable"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border border-border p-4">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">Allow Community Edits</FormLabel>
                     <FormDescription>

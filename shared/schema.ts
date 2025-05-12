@@ -30,7 +30,7 @@ export const chatrooms = pgTable("chatrooms", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull(),
-  createdBy: integer("created_by").notNull(),
+  createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   theme: text("theme").default("default"),
 });

@@ -147,7 +147,7 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
                   className={`border rounded-lg p-2 cursor-pointer transition-all ${
                     theme === option.id 
                       ? "border-primary ring-2 ring-primary/20" 
-                      : "border-neutral-200 hover:border-primary/50"
+                      : "border-border hover:border-primary/50"
                   }`}
                   onClick={() => setTheme(option.id)}
                 >
