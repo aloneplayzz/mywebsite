@@ -92,7 +92,7 @@ export function StarredMessagesDialog({ isOpen, onOpenChange, chatroomId }: Star
                           {message.persona ? message.persona.name : message.user?.firstName || 'Unknown'}
                         </div>
                         <div className="text-xs text-muted-foreground ml-2">
-                          {new Date(message.createdAt).toLocaleString()}
+                          {message.createdAt ? new Date(message.createdAt).toLocaleString() : ''}
                         </div>
                       </div>
                       <Button 
@@ -104,7 +104,7 @@ export function StarredMessagesDialog({ isOpen, onOpenChange, chatroomId }: Star
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
-                    <div className="text-sm">{message.content}</div>
+                    <div className="text-sm">{message.message}</div>
                   </div>
                 ))}
               </ScrollArea>

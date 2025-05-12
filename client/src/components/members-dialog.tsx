@@ -155,7 +155,8 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
 
   // Get username from userId
   const getUserName = (userId: string) => {
-    const user = users?.find(u => u.id === userId);
+    if (!Array.isArray(users)) return 'Unknown User';
+    const user = users.find(u => u.id === userId);
     return user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Unknown User';
   };
 
@@ -179,7 +180,7 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
               </div>
             ) : (
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {members?.map((member: ChatroomMember) => (
+                {Array.isArray(members) && members.map((member: ChatroomMember) => (
                   <div key={member.id} className="flex items-center justify-between p-3 border rounded-md">
                     <div className="flex items-center gap-2">
                       {member.role === "owner" ? (
@@ -240,7 +241,7 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
                   </div>
                 ))}
                 
-                {members?.length === 0 && (
+                {Array.isArray(members) && members.length === 0 && (
                   <div className="text-center py-4 text-muted-foreground">
                     No members found
                   </div>
@@ -259,7 +260,8 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
                       <SelectValue placeholder="Select a user" />
                     </SelectTrigger>
                     <SelectContent>
-                      {users?.filter(u => !members?.some(m => m.userId === u.id))
+                      {Array.isArray(users) && Array.isArray(members) && users
+                        .filter(u => !members.some(m => m.userId === u.id))
                         .map((user: User) => (
                         <SelectItem key={user.id} value={user.id}>
                           {user.firstName ? `${user.firstName} ${user.lastName || ''}` : user.id}

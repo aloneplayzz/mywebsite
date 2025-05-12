@@ -294,6 +294,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User API routes
+  app.get('/api/auth/users', isAuthenticated, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Set up WebSockets
