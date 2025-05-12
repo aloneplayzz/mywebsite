@@ -171,10 +171,34 @@ export function setupWebsockets(server: Server) {
           });
         } catch (error) {
           console.error('Error generating AI response:', error);
-          broadcastToRoom(roomId, {
-            type: 'ai_error',
-            payload: { personaId, error: 'Failed to generate AI response' }
-          });
+          
+          try {
+            // Create a fallback error message from the persona
+            const errorMessage = await storage.createMessage({
+              roomId,
+              userId: undefined,
+              personaId,
+              message: "I'm having trouble accessing my knowledge. Please try again later.",
+            });
+            
+            const chatErrorMessage: ChatMessage = {
+              ...errorMessage,
+              persona
+            };
+            
+            // Send error message to all users in the room as a regular message
+            broadcastToRoom(roomId, {
+              type: 'new_message', 
+              payload: chatErrorMessage
+            });
+          } catch (storeError) {
+            console.error('Error storing fallback message:', storeError);
+            // If even the fallback fails, send an error event
+            broadcastToRoom(roomId, {
+              type: 'ai_error',
+              payload: { personaId, error: 'Failed to generate AI response' }
+            });
+          }
         }
       }
     }

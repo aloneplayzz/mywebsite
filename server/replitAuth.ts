@@ -37,15 +37,16 @@ export function getSession() {
   });
 }
 
-function updateUserSession(
-  user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
-) {
-  user.claims = tokens.claims();
-  user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
-}
+// We no longer need this function since we're directly using Passport's session management
+// function updateUserSession(
+//   user: any,
+//   tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
+// ) {
+//   user.claims = tokens.claims();
+//   user.access_token = tokens.access_token;
+//   user.refresh_token = tokens.refresh_token;
+//   user.expires_at = user.claims?.exp;
+// }
 
 async function upsertUser(
   claims: any
@@ -132,10 +133,24 @@ export async function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
+  app.get("/api/auth/user", async (req: any, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
+      // If we already have the user in the request, just return it
+      if (req.user && req.user.email !== undefined) {
+        return res.json(req.user);
+      }
+      
+      // Otherwise fetch from storage
       const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -145,28 +160,10 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
-    return next();
-  }
-
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    return res.redirect("/api/login");
-  }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    return res.redirect("/api/login");
-  }
+  
+  // Pass through the request since the user is authenticated
+  return next();
 };

@@ -44,14 +44,16 @@ Respond as ${persona.name} in 1-2 sentences. ${persona.samplePrompt}`;
   } catch (error: any) {
     console.error("Error generating AI response:", error);
     
-    // Handle rate limit errors specifically
+    // Handle specific OpenAI errors
     if (error.code === 'insufficient_quota' || error.status === 429) {
-      return "I'm currently unavailable due to API rate limits. Please try again later or contact the administrator to check the OpenAI API quota.";
+      return `I apologize, but the AI service is currently unavailable due to reaching usage limits. Please contact the administrator to update the OpenAI API plan. Error: ${error.message || 'Rate limit exceeded'}`;
     } else if (error.code === 'invalid_api_key' || error.status === 401) {
-      return "I'm currently offline due to API authentication issues. Please contact the administrator to check the OpenAI API key.";
+      return "I'm currently offline due to API authentication issues. Please contact the administrator to verify the OpenAI API key.";
+    } else if (error.code === 'model_not_found' || error.status === 404) {
+      return "I'm using a model that isn't currently available. Please contact the administrator to update the configuration.";
     }
     
     // Generic error
-    throw new Error("Failed to generate AI response");
+    return "I'm having trouble generating a response right now. Please try again later.";
   }
 }
