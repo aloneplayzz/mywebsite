@@ -212,6 +212,124 @@ export function setupWebsockets(server: Server) {
     }
   }
   
+  // Function to handle sending attachments
+  async function handleSendAttachment(ws: WebSocketClient, {
+    messageId,
+    url,
+    fileName,
+    fileSize,
+    fileType,
+    attachmentType
+  }: {
+    messageId: number,
+    url: string,
+    fileName: string,
+    fileSize: number,
+    fileType: string,
+    attachmentType: string
+  }) {
+    const { userId, roomId } = ws;
+    
+    if (!userId || !roomId) {
+      return sendErrorToClient(ws, 'You must join a room before sending attachments');
+    }
+    
+    try {
+      // Validate attachment type
+      if (!Object.values(attachmentTypes.enumValues).includes(attachmentType)) {
+        return sendErrorToClient(ws, 'Invalid attachment type');
+      }
+      
+      // Create the attachment
+      const attachment = await storage.createAttachment({
+        messageId,
+        url,
+        fileName,
+        fileSize,
+        fileType,
+        attachmentType: attachmentType as any
+      });
+      
+      // Get the updated message with the attachment
+      const message = await storage.getMessage(messageId);
+      if (!message) {
+        return sendErrorToClient(ws, 'Message not found');
+      }
+      
+      // Broadcast the attachment to all clients in the room
+      broadcastToRoom(roomId, {
+        type: 'attachment_added',
+        payload: {
+          messageId,
+          attachment
+        }
+      });
+    } catch (error) {
+      console.error('Error handling attachment:', error);
+      sendErrorToClient(ws, 'Failed to process attachment');
+    }
+  }
+  
+  // Function to handle voice messages
+  async function handleSendVoiceMessage(ws: WebSocketClient, {
+    message,
+    url,
+    fileName,
+    fileSize,
+    duration
+  }: {
+    message: string,
+    url: string,
+    fileName: string,
+    fileSize: number,
+    duration: number
+  }) {
+    const { userId, roomId } = ws;
+    
+    if (!userId || !roomId) {
+      return sendErrorToClient(ws, 'You must join a room before sending voice messages');
+    }
+    
+    try {
+      // First create the message
+      const insertedMessage = await storage.createMessage({
+        roomId,
+        userId,
+        message: message || "Voice message",
+        hasAttachment: true
+      });
+      
+      // Then create the voice attachment
+      const attachment = await storage.createAttachment({
+        messageId: insertedMessage.id,
+        url,
+        fileName,
+        fileSize,
+        fileType: 'audio/wav',
+        attachmentType: 'voice_message'
+      });
+      
+      // Get user info
+      const user = await storage.getUser(userId);
+      
+      // Create full chatMessage to broadcast
+      const chatMessage: ChatMessage = {
+        ...insertedMessage,
+        user,
+        attachments: [attachment]
+      };
+      
+      // Broadcast the message to all clients in the room
+      broadcastToRoom(roomId, {
+        type: 'new_message',
+        payload: chatMessage
+      });
+    } catch (error) {
+      console.error('Error handling voice message:', error);
+      sendErrorToClient(ws, 'Failed to process voice message');
+    }
+  }
+  
   // Helper function to broadcast a message to all clients in a room
   function broadcastToRoom(roomId: number, data: WSMessage) {
     wss.clients.forEach((client: WebSocketClient) => {
