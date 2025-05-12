@@ -64,13 +64,13 @@ export function MembersDialog({ isOpen, onOpenChange, chatroomId }: MembersDialo
   });
   
   // Check user permissions
-  const { data: userMember } = useQuery({
+  const { data: userMember } = useQuery<ChatroomMember | undefined>({
     queryKey: [`/api/chatrooms/${chatroomId}/members/${userId}`],
     enabled: !!userId && isOpen
   });
   
-  const isOwner = userMember?.role === "owner";
-  const isModerator = isOwner || userMember?.role === "moderator";
+  const isOwner = userMember && userMember.role === "owner";
+  const isModerator = isOwner || (userMember && userMember.role === "moderator");
   
   // Add a member mutation
   const addMemberMutation = useMutation({
