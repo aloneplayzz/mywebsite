@@ -15,7 +15,7 @@ export default function ChatMessageComponent({
   if (!message.user && !message.persona) {
     return (
       <div className="flex justify-center">
-        <div className="bg-neutral-100 text-neutral-500 text-sm px-4 py-2 rounded-full">
+        <div className="bg-neutral-100 dark:bg-gray-700 text-neutral-500 dark:text-neutral-300 text-sm px-4 py-2 rounded-full">
           {message.message}
         </div>
       </div>
@@ -51,11 +51,11 @@ export default function ChatMessageComponent({
             className="w-8 h-8 rounded-full object-cover"
           />
         </div>
-        <div className="bg-white border border-neutral-200 px-4 py-2 rounded-xl rounded-bl-none max-w-[80%] shadow-sm">
-          <div className="text-xs text-neutral-500 font-medium mb-1">
+        <div className="bg-white dark:bg-gray-800 border border-neutral-200 dark:border-gray-700 px-4 py-2 rounded-xl rounded-bl-none max-w-[80%] shadow-sm">
+          <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-1">
             {message.user.firstName || message.user.email || 'User'}
           </div>
-          <p>{message.message}</p>
+          <p className="text-black dark:text-white">{message.message}</p>
         </div>
       </div>
     );
