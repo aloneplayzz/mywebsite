@@ -59,6 +59,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const chatroom = await storage.createChatroom(validatedData);
+      
+      // Automatically add the creator as an owner
+      await storage.addChatroomMember(chatroom.id, req.user.id, 'owner');
+      
       res.status(201).json(chatroom);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -258,6 +262,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.get("/api/chatrooms/:id/members/:userId", async (req, res) => {
+    try {
+      const chatroomId = parseInt(req.params.id);
+      if (isNaN(chatroomId)) {
+        return res.status(400).json({ message: "Invalid chatroom ID" });
+      }
+
+      const userId = req.params.userId;
+      if (!userId) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      const member = await storage.getChatroomMember(chatroomId, userId);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      res.json(member);
+    } catch (error) {
+      console.error("Error fetching chatroom member:", error);
+      res.status(500).json({ message: "Failed to fetch chatroom member" });
+    }
+  });
+  
   app.post("/api/chatrooms/:id/members", isAuthenticated, async (req: any, res) => {
     try {
       const chatroomId = parseInt(req.params.id);
@@ -295,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.put("/api/chatrooms/:id/members/:userId", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/chatrooms/:id/members/:userId", isAuthenticated, async (req: any, res) => {
     try {
       const chatroomId = parseInt(req.params.id);
       if (isNaN(chatroomId)) {
