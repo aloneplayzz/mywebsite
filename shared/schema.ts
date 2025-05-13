@@ -16,11 +16,18 @@ export const sessions = pgTable(
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
   email: varchar("email").unique(),
+  password: varchar("password"),  // For email/password auth
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  
+  // Fields for Auth.js email verification
+  emailVerified: timestamp("email_verified"),
+  // Fields for Auth.js account linking
+  provider: varchar("provider"),
+  providerAccountId: varchar("provider_account_id"),
 });
 
 export const insertUserSchema = createInsertSchema(users);
