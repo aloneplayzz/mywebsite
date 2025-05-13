@@ -183,6 +183,30 @@ class WebSocketClient {
       this.notifyStatus("error", "Not connected to server, please try again");
     }
   }
+  
+  public sendAttachment(url: string, fileName: string, fileSize: number, fileType: string, attachmentType: string) {
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({
+        type: "send_attachment",
+        payload: { url, fileName, fileSize, fileType, attachmentType }
+      }));
+    } else {
+      console.warn("WebSocket not connected, can't send attachment");
+      this.notifyStatus("error", "Not connected to server, please try again");
+    }
+  }
+  
+  public sendVoiceMessage(url: string, fileName: string, fileSize: number, fileType: string) {
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({
+        type: "send_voice_message",
+        payload: { url, fileName, fileSize, fileType }
+      }));
+    } else {
+      console.warn("WebSocket not connected, can't send voice message");
+      this.notifyStatus("error", "Not connected to server, please try again");
+    }
+  }
 
   public onMessage(callback: MessageCallback) {
     this.messageCallbacks.push(callback);

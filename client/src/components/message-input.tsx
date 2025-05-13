@@ -5,6 +5,8 @@ import { Persona } from "@shared/schema";
 import { AttachmentUpload } from "@/components/attachment-upload";
 import { VoiceRecorder } from "@/components/voice-recorder";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { websocketClient } from "@/lib/websocket";
+import { useToast } from "@/hooks/use-toast";
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
@@ -15,6 +17,7 @@ export default function MessageInput({
   onSendMessage, 
   selectedPersona 
 }: MessageInputProps) {
+  const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAttachmentOpen, setIsAttachmentOpen] = useState(false);
@@ -36,16 +39,45 @@ export default function MessageInput({
   
   // Handle file upload
   const handleFileUpload = (file: File, url: string) => {
-    // For now, we'll just add the URL to the message
-    setMessage((prev) => prev + `\n[Attachment: ${url}]`);
+    const fileType = file.type;
+    const fileName = file.name;
+    const fileSize = file.size;
+    
+    // Get attachment type from the MIME type
+    const attachmentType = fileType.startsWith('image/')
+      ? 'image'
+      : fileType.startsWith('audio/')
+        ? 'audio'
+        : fileType.startsWith('video/')
+          ? 'video'
+          : 'document';
+    
+    // Send the attachment through WebSocket
+    websocketClient.sendAttachment(url, fileName, fileSize, fileType, attachmentType);
     setIsAttachmentOpen(false);
+    
+    // Give some feedback to the user
+    toast({
+      title: "Attachment sent",
+      description: `Your ${attachmentType} has been sent`
+    });
   };
   
   // Handle voice message
   const handleVoiceMessage = (blob: Blob, url: string) => {
-    // For now, we'll just add the URL to the message
-    setMessage((prev) => prev + `\n[Voice Message: ${url}]`);
+    const fileType = blob.type;
+    const fileName = "voice_message.webm";
+    const fileSize = blob.size;
+    
+    // Send the voice message through WebSocket
+    websocketClient.sendVoiceMessage(url, fileName, fileSize, fileType);
     setIsVoiceRecorderOpen(false);
+    
+    // Give some feedback to the user
+    toast({
+      title: "Voice message sent",
+      description: "Your voice message has been sent"
+    });
   };
   
   // Handle Enter key press
