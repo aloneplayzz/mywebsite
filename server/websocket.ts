@@ -214,14 +214,12 @@ export function setupWebsockets(server: Server) {
   
   // Function to handle sending attachments
   async function handleSendAttachment(ws: WebSocketClient, {
-    messageId,
     url,
     fileName,
     fileSize,
     fileType,
     attachmentType
   }: {
-    messageId: number,
     url: string,
     fileName: string,
     fileSize: number,
@@ -241,9 +239,16 @@ export function setupWebsockets(server: Server) {
         return sendErrorToClient(ws, 'Invalid attachment type');
       }
       
-      // Create the attachment
+      // First, create a message to hold the attachment
+      const message = await storage.createMessage({
+        roomId,
+        userId,
+        message: `Sent ${attachmentType}`, // Default message for attachment
+      });
+      
+      // Then create the attachment linked to this message
       const attachment = await storage.createAttachment({
-        messageId,
+        messageId: message.id,
         url,
         fileName,
         fileSize,
@@ -251,19 +256,20 @@ export function setupWebsockets(server: Server) {
         attachmentType: attachmentType as "image" | "audio" | "video" | "document" | "voice_message"
       });
       
-      // Get the updated message with the attachment
-      const message = await storage.getMessage(messageId);
-      if (!message) {
-        return sendErrorToClient(ws, 'Message not found');
-      }
+      // Get user info
+      const user = await storage.getUser(userId);
       
-      // Broadcast the attachment to all clients in the room
+      // Construct the chat message with its attachment
+      const chatMessage: ChatMessage = {
+        ...message,
+        user,
+        attachments: [attachment]
+      };
+      
+      // Broadcast the message with attachment to all clients in the room
       broadcastToRoom(roomId, {
-        type: 'attachment_added',
-        payload: {
-          messageId,
-          attachment
-        }
+        type: 'new_message',
+        payload: chatMessage
       });
     } catch (error) {
       console.error('Error handling attachment:', error);

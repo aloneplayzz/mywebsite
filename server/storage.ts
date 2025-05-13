@@ -391,9 +391,8 @@ export class DatabaseStorage implements IStorage {
           persona = await this.getPersona(message.personaId);
         }
         
-        if (message.hasAttachment) {
-          attachments = await this.getAttachmentsByMessageId(message.id);
-        }
+        // Always check for attachments since we don't have a hasAttachment field
+        attachments = await this.getAttachmentsByMessageId(message.id);
         
         return {
           ...message,
@@ -442,13 +441,8 @@ export class DatabaseStorage implements IStorage {
         .values(attachment)
         .returning();
       
-      // Update the message to indicate it has an attachment
-      if (attachment.messageId) {
-        await db
-          .update(messages)
-          .set({ hasAttachment: true })
-          .where(eq(messages.id, attachment.messageId));
-      }
+      // We don't need to update a hasAttachment flag anymore
+      // Just return the new attachment
       
       return newAttachment;
     } catch (error) {
