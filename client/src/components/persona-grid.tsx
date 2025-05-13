@@ -53,11 +53,12 @@ export function PersonaGrid() {
     }
 
     // Create a new chatroom with the persona's name
-    // We'll need to extend the server routes to handle defaultPersonaId
+    // We need to include the current user's ID as createdBy
     createRoomMutation.mutate({
       name: `Chat with ${persona.name}`,
       description: `Private conversation with ${persona.name}${persona.id ? ` (Persona ID: ${persona.id})` : ''}`,
       theme: 'private',
+      createdBy: user!.id,
     });
   };
 
