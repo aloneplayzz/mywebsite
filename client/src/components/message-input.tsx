@@ -17,6 +17,8 @@ export default function MessageInput({
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAttachmentOpen, setIsAttachmentOpen] = useState(false);
+  const [isVoiceRecorderOpen, setIsVoiceRecorderOpen] = useState(false);
 
   // Handle sending messages
   const handleSend = () => {
@@ -32,6 +34,20 @@ export default function MessageInput({
     }, 500);
   };
   
+  // Handle file upload
+  const handleFileUpload = (file: File, url: string) => {
+    // For now, we'll just add the URL to the message
+    setMessage((prev) => prev + `\n[Attachment: ${url}]`);
+    setIsAttachmentOpen(false);
+  };
+  
+  // Handle voice message
+  const handleVoiceMessage = (blob: Blob, url: string) => {
+    // For now, we'll just add the URL to the message
+    setMessage((prev) => prev + `\n[Voice Message: ${url}]`);
+    setIsVoiceRecorderOpen(false);
+  };
+  
   // Handle Enter key press
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -45,9 +61,8 @@ export default function MessageInput({
       <div className="flex items-end space-x-2">
         <button 
           className="text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 hover:dark:text-neutral-400 p-2"
-          onClick={() => {
-            window.alert("Image upload feature coming soon!");
-          }}
+          onClick={() => setIsAttachmentOpen(true)}
+          disabled={!selectedPersona}
           title="Add image"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -58,9 +73,8 @@ export default function MessageInput({
         </button>
         <button 
           className="text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 hover:dark:text-neutral-400 p-2"
-          onClick={() => {
-            window.alert("Voice message feature coming soon!");
-          }}
+          onClick={() => setIsVoiceRecorderOpen(true)}
+          disabled={!selectedPersona}
           title="Voice message"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -102,6 +116,29 @@ export default function MessageInput({
           )}
         </Button>
       </div>
+      
+      {/* Attachment Upload Dialog */}
+      <Dialog open={isAttachmentOpen} onOpenChange={setIsAttachmentOpen}>
+        <DialogContent className="sm:max-w-md">
+          <AttachmentUpload 
+            onFileUpload={handleFileUpload}
+            onCancel={() => setIsAttachmentOpen(false)}
+            allowedTypes={['image/jpeg', 'image/png', 'image/gif', 'application/pdf']}
+            maxSize={5} // 5MB
+          />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Voice Recorder Dialog */}
+      <Dialog open={isVoiceRecorderOpen} onOpenChange={setIsVoiceRecorderOpen}>
+        <DialogContent className="sm:max-w-md">
+          <VoiceRecorder 
+            onVoiceReady={handleVoiceMessage}
+            onCancel={() => setIsVoiceRecorderOpen(false)}
+            maxDuration={60} // 60 seconds
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
