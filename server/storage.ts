@@ -249,6 +249,10 @@ export class DatabaseStorage implements IStorage {
         .insert(chatrooms)
         .values(insertChatroom)
         .returning();
+        
+      // Add the creator as the owner of the chatroom
+      await this.addChatroomMember(chatroom.id, insertChatroom.createdBy, 'owner');
+        
       return chatroom;
     } catch (error) {
       console.error("Error creating chatroom:", error);

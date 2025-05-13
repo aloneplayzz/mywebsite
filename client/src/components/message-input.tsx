@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Persona } from "@shared/schema";
+import { AttachmentUpload } from "@/components/attachment-upload";
+import { VoiceRecorder } from "@/components/voice-recorder";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
