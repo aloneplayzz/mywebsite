@@ -1,37 +1,39 @@
 import passport from "passport";
-import { Strategy as GoogleStrategy, Profile, VerifyCallback } from "passport-google-oauth20";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
-import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import ConnectPgSimple from "connect-pg-simple";
+import { User } from "@shared/schema";
+
+// Session store setup
+const PgStore = ConnectPgSimple(session);
 
 // Check for required environment variables
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-  console.warn("Google OAuth credentials missing. Google authentication will not work.");
+  console.warn("Google OAuth credentials missing. Google authentication will not work properly.");
 }
 
-// Declare type augmentation for express session
+// Define a simple type for our user session
+type UserSession = {
+  id: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  profileImageUrl?: string | null;
+};
+
+// Declare globals for Express sessions
 declare global {
   namespace Express {
-    interface User {
-      id: string;
-      email?: string;
-      firstName?: string;
-      lastName?: string;
-      profileImageUrl?: string;
-      createdAt?: Date;
-      updatedAt?: Date;
-    }
+    interface User extends UserSession {}
   }
 }
 
 export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const PgStore = connectPg(session);
-  
   return session({
-    secret: process.env.SESSION_SECRET || 'ai-persona-chat-secret',
+    secret: process.env.SESSION_SECRET || "ai-persona-chat-dev-secret",
     store: new PgStore({
       pool,
       tableName: 'sessions',
@@ -41,54 +43,54 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: sessionTtl,
-    },
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
+    }
   });
 }
 
-async function upsertUser(profile: Profile) {
-  // Extract profile information
-  const id = profile.id;
-  const email = profile.emails?.[0]?.value;
-  const firstName = profile.name?.givenName;
-  const lastName = profile.name?.familyName;
-  const profileImageUrl = profile.photos?.[0]?.value;
-
-  return await storage.upsertUser({
-    id,
-    email,
-    firstName,
-    lastName,
-    profileImageUrl,
-  });
-}
-
-export async function setupAuth(app: Express) {
+export function setupAuth(app: Express): void {
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Set up Google Strategy if credentials are available
+  // Configure Google Strategy
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     passport.use(
       new GoogleStrategy(
         {
           clientID: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          callbackURL: "/api/auth/google/callback",
+          callbackURL: "/api/auth/google/callback"
         },
-        async (
-          accessToken: string, 
-          refreshToken: string, 
-          profile: Profile, 
-          done: VerifyCallback
-        ) => {
+        async (accessToken, refreshToken, profile, done) => {
           try {
-            const user = await upsertUser(profile);
-            return done(null, user);
+            // Create user object from Google profile
+            const userInfo = {
+              id: profile.id,
+              email: profile.emails?.[0]?.value || null,
+              firstName: profile.name?.givenName || null,
+              lastName: profile.name?.familyName || null,
+              profileImageUrl: profile.photos?.[0]?.value || null,
+              provider: "google"
+            };
+
+            // Upsert user in database
+            const savedUser = await storage.upsertUser(userInfo);
+            
+            // Create a simplified session user
+            const sessionUser: UserSession = {
+              id: savedUser.id,
+              email: savedUser.email,
+              firstName: savedUser.firstName,
+              lastName: savedUser.lastName,
+              profileImageUrl: savedUser.profileImageUrl
+            };
+
+            // Return this session user object
+            return done(null, sessionUser as any);
           } catch (error) {
             console.error("Google auth error:", error);
             return done(error as Error);
@@ -98,25 +100,42 @@ export async function setupAuth(app: Express) {
     );
   }
 
-  passport.serializeUser((user: Express.User, done) => {
+  // Session serialization
+  passport.serializeUser((user, done) => {
     done(null, user.id);
   });
 
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUser(id);
-      done(null, user || undefined);
+      
+      if (!user) {
+        return done(null, false);
+      }
+
+      // Create simplified session user
+      const sessionUser: UserSession = {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImageUrl: user.profileImageUrl
+      };
+
+      // Return the session user
+      done(null, sessionUser as any);
     } catch (error) {
-      done(error);
+      console.error("Error deserializing user:", error);
+      done(error, null);
     }
   });
 
-  // Google authentication routes
+  // Authentication routes
   app.get(
     "/api/auth/google",
-    passport.authenticate("google", { 
+    passport.authenticate("google", {
       scope: ["profile", "email"],
-      prompt: "select_account" // Always show account selector
+      prompt: "select_account"
     })
   );
 
@@ -124,11 +143,10 @@ export async function setupAuth(app: Express) {
     "/api/auth/google/callback",
     passport.authenticate("google", {
       successRedirect: "/",
-      failureRedirect: "/auth",
+      failureRedirect: "/auth"
     })
   );
 
-  // Logout route
   app.get("/api/auth/logout", (req, res) => {
     req.logout((err) => {
       if (err) {
@@ -138,30 +156,11 @@ export async function setupAuth(app: Express) {
     });
   });
 
-  // User info route
-  app.get("/api/auth/user", async (req, res) => {
+  app.get("/api/auth/user", (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-
-    try {
-      const userId = req.user.id;
-      // If we already have the user in the request, just return it
-      if (req.user && req.user.email !== undefined) {
-        return res.json(req.user);
-      }
-
-      // Otherwise fetch from storage
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
+    res.json(req.user);
   });
 }
 
@@ -169,5 +168,5 @@ export const isAuthenticated: RequestHandler = (req, res, next) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  return next();
+  next();
 };

@@ -300,7 +300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Only chatroom owner or moderator can add members with specific roles
       if (req.body.role && req.body.role !== 'member') {
-        const isOwnerOrMod = await storage.isChatroomModerator(chatroomId, req.user.claims.sub);
+        const isOwnerOrMod = await storage.isChatroomModerator(chatroomId, req.user.id);
         if (!isOwnerOrMod) {
           return res.status(403).json({ message: "You don't have permission to add members with this role" });
         }
@@ -338,12 +338,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Only chatroom owner can change roles to owner
       // Only chatroom owner or moderator can update member roles
       if (req.body.role === 'owner') {
-        const isOwner = await storage.isChatroomOwner(chatroomId, req.user.claims.sub);
+        const isOwner = await storage.isChatroomOwner(chatroomId, req.user.id);
         if (!isOwner) {
           return res.status(403).json({ message: "Only the chatroom owner can assign ownership" });
         }
       } else {
-        const isOwnerOrMod = await storage.isChatroomModerator(chatroomId, req.user.claims.sub);
+        const isOwnerOrMod = await storage.isChatroomModerator(chatroomId, req.user.id);
         if (!isOwnerOrMod) {
           return res.status(403).json({ message: "You don't have permission to change member roles" });
         }
@@ -379,15 +379,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId } = req.params;
       
       // Users can remove themselves, or mods/owners can remove others
-      if (userId !== req.user.claims.sub) {
-        const isOwnerOrMod = await storage.isChatroomModerator(chatroomId, req.user.claims.sub);
+      if (userId !== req.user.id) {
+        const isOwnerOrMod = await storage.isChatroomModerator(chatroomId, req.user.id);
         if (!isOwnerOrMod) {
           return res.status(403).json({ message: "You don't have permission to remove members" });
         }
         
         // Cannot remove owners if you're a moderator
         const memberToRemove = await storage.getChatroomMember(chatroomId, userId);
-        if (memberToRemove?.role === 'owner' && !await storage.isChatroomOwner(chatroomId, req.user.claims.sub)) {
+        if (memberToRemove?.role === 'owner' && !await storage.isChatroomOwner(chatroomId, req.user.id)) {
           return res.status(403).json({ message: "Moderators cannot remove owners" });
         }
       }

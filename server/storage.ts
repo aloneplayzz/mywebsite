@@ -175,18 +175,11 @@ export class DatabaseStorage implements IStorage {
   // User Methods
   async getUser(id: string): Promise<User | undefined> {
     try {
-      // Safely select only columns that are known to exist
-      const [user] = await db.select({
-        id: users.id,
-        email: users.email,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        profileImageUrl: users.profileImageUrl,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt
-      }).from(users).where(eq(users.id, id));
-      
-      return user;
+      // Try to get the user with error handling
+      const users_result = await db.query.users.findFirst({
+        where: (users, { eq }) => eq(users.id, id)
+      });
+      return users_result;
     } catch (error) {
       console.error("Error fetching user:", error);
       return undefined;
@@ -195,58 +188,39 @@ export class DatabaseStorage implements IStorage {
   
   async upsertUser(userData: Partial<InsertUser>): Promise<User> {
     try {
-      // Extract only the fields we know exist in the database
-      const safeUserData = {
-        id: userData.id,
-        email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        profileImageUrl: userData.profileImageUrl,
-        // Add provider info for Google auth
-        provider: userData.provider || 'google',
-        providerAccountId: userData.providerAccountId || userData.id,
-      };
+      if (!userData.id) {
+        throw new Error("User ID is required for upsert operation");
+      }
       
-      // Check if user exists first
-      const existingUser = await this.getUser(safeUserData.id);
+      // Check if the user exists
+      const existingUser = await this.getUser(userData.id);
       
       if (existingUser) {
-        // Update existing user
+        // Update the user if they exist
         const [updatedUser] = await db
           .update(users)
-          .set({
-            ...safeUserData,
-            updatedAt: new Date(),
+          .set({ 
+            ...userData, 
+            updatedAt: new Date() 
           })
-          .where(eq(users.id, safeUserData.id))
-          .returning({
-            id: users.id,
-            email: users.email,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            profileImageUrl: users.profileImageUrl,
-            createdAt: users.createdAt,
-            updatedAt: users.updatedAt
-          });
+          .where(eq(users.id, userData.id))
+          .returning();
         return updatedUser;
       } else {
-        // Insert new user
+        // Create a new user if they don't exist
         const [newUser] = await db
           .insert(users)
           .values({
-            ...safeUserData,
+            id: userData.id,
+            email: userData.email,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            profileImageUrl: userData.profileImageUrl,
+            provider: 'google',
             createdAt: new Date(),
-            updatedAt: new Date(),
+            updatedAt: new Date()
           })
-          .returning({
-            id: users.id,
-            email: users.email,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            profileImageUrl: users.profileImageUrl,
-            createdAt: users.createdAt,
-            updatedAt: users.updatedAt
-          });
+          .returning();
         return newUser;
       }
     } catch (error) {
