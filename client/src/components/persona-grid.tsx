@@ -1,20 +1,65 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { PersonaWithCategory } from "@shared/schema";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { InsertChatroom, PersonaWithCategory } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import CreatePersonaModal from "@/components/create-persona-modal";
-import { PlusIcon, TrendingUpIcon } from "lucide-react";
+import { PlusIcon, TrendingUpIcon, Loader2 } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 export function PersonaGrid() {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
   
   const { data: personas = [], isLoading } = useQuery<PersonaWithCategory[]>({
     queryKey: ["/api/personas"],
   });
+
+  // Mutation to create a new chatroom with a selected persona
+  const createRoomMutation = useMutation({
+    mutationFn: async (data: InsertChatroom) => {
+      const res = await apiRequest("POST", "/api/chatrooms", data);
+      return await res.json();
+    },
+    onSuccess: (chatroom) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chatrooms"] });
+      navigate(`/chat/${chatroom.id}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error creating chatroom",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleChatNow = (persona: PersonaWithCategory) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to start a chat with this persona.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create a new chatroom with the persona's name
+    createRoomMutation.mutate({
+      name: `Chat with ${persona.name}`,
+      description: `Private conversation with ${persona.name}`,
+      isPrivate: true,
+      defaultPersonaId: persona.id,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -92,8 +137,21 @@ export function PersonaGrid() {
               )}
             </CardContent>
             <CardFooter>
-              <Button variant="secondary" size="sm" className="w-full">
-                Chat Now
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                className="w-full"
+                onClick={() => handleChatNow(persona)}
+                disabled={createRoomMutation.isPending}
+              >
+                {createRoomMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Chat Now"
+                )}
               </Button>
             </CardFooter>
           </Card>

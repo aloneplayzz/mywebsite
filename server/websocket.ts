@@ -279,17 +279,15 @@ export function setupWebsockets(server: Server) {
   
   // Function to handle voice messages
   async function handleSendVoiceMessage(ws: WebSocketClient, {
-    message,
     url,
     fileName,
     fileSize,
-    duration
+    fileType
   }: {
-    message: string,
     url: string,
     fileName: string,
     fileSize: number,
-    duration: number
+    fileType: string
   }) {
     const { userId, roomId } = ws;
     
@@ -302,8 +300,7 @@ export function setupWebsockets(server: Server) {
       const insertedMessage = await storage.createMessage({
         roomId,
         userId,
-        message: message || "Voice message",
-        hasAttachment: true
+        message: "Voice message" // Default text for voice messages
       });
       
       // Then create the voice attachment
@@ -312,7 +309,7 @@ export function setupWebsockets(server: Server) {
         url,
         fileName,
         fileSize,
-        fileType: 'audio/wav',
+        fileType: fileType || 'audio/webm',
         attachmentType: 'voice_message'
       });
       
