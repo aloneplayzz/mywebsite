@@ -1,14 +1,15 @@
 import { Auth } from "@auth/core";
-import ExpressAuth from "@auth/express";
+import * as ExpressAuthModule from "@auth/express";
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { eq } from "drizzle-orm";
-import Google from "@auth/core/providers/google";
+import GoogleProvider from "@auth/core/providers/google";
 import EmailProvider from "@auth/core/providers/email";
-import Credentials from "@auth/core/providers/credentials";
+import CredentialsProvider from "@auth/core/providers/credentials";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import type { Express, Request, Response, NextFunction } from "express";
 
 const scryptAsync = promisify(scrypt);
 
@@ -32,7 +33,7 @@ if (!process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET is required");
 }
 
-export async function setupAuthProviders(app: any) {
+export async function setupAuthProviders(app: Express) {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     console.warn("Google auth credentials not provided. Google auth will not be available.");
   }
@@ -42,7 +43,7 @@ export async function setupAuthProviders(app: any) {
     
     // Google provider
     ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET 
-      ? [Google({
+      ? [GoogleProvider({
           clientId: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         })]
@@ -62,7 +63,7 @@ export async function setupAuthProviders(app: any) {
     }),
     
     // Username/password credentials provider
-    Credentials({
+    CredentialsProvider({
       name: "Credentials",
       credentials: {
         username: { label: "Username", type: "text" },
@@ -71,24 +72,32 @@ export async function setupAuthProviders(app: any) {
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null;
         
-        // Find user by username
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, credentials.username));
-        
-        if (!user || !user.password) return null;
-        
-        // Verify password
-        const isValid = await comparePasswords(credentials.password, user.password);
-        
-        if (isValid) {
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.firstName || user.email?.split('@')[0] || user.id,
-            image: user.profileImageUrl,
-          };
+        try {
+          // Find user by username/email
+          const userResult = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, credentials.username));
+          
+          const user = userResult[0];
+          if (!user) return null;
+          
+          // Check if user has password (might be social login only)
+          if (!user.password) return null;
+          
+          // Verify password
+          const isValid = await comparePasswords(credentials.password, user.password as string);
+          
+          if (isValid) {
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.firstName || (user.email ? user.email.split('@')[0] : user.id),
+              image: user.profileImageUrl,
+            };
+          }
+        } catch (error) {
+          console.error("Error in credentials provider:", error);
         }
         
         return null;
@@ -97,10 +106,11 @@ export async function setupAuthProviders(app: any) {
   ];
 
   // Set up Auth.js with Express
+  const { ExpressAuth } = ExpressAuthModule;
   ExpressAuth(app, {
     providers,
     adapter: DrizzleAdapter(db), // Using Drizzle adapter with our existing db instance
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET!,
     trustHost: true,
     cookies: {
       sessionToken: {
@@ -119,14 +129,14 @@ export async function setupAuthProviders(app: any) {
     },
     callbacks: {
       // Modify session data
-      async session({ session, token }) {
+      async session({ session, token }: { session: any; token: any }) {
         if (token && session.user) {
           session.user.id = token.sub || session.user.id;
         }
         return session;
       },
       // Add user data to JWT token
-      async jwt({ token, user }) {
+      async jwt({ token, user }: { token: any; user: any }) {
         if (user) {
           token.id = user.id;
         }
