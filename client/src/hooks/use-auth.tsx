@@ -19,8 +19,8 @@ function useLogoutMutation() {
   
   return useMutation({
     mutationFn: async () => {
-      // For Replit Auth, we directly navigate to the auth logout endpoint
-      window.location.href = '/api/logout';
+      // For Google Auth, navigate to the logout endpoint
+      window.location.href = '/api/auth/logout';
     },
     onError: (error: Error) => {
       toast({
@@ -70,7 +70,7 @@ export function useAuth() {
   return context;
 }
 
-// Utility function to redirect to login
+// Utility function to redirect to Google login
 export function login() {
-  window.location.href = '/api/login';
+  window.location.href = '/api/auth/google';
 }
