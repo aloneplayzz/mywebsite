@@ -31,7 +31,7 @@ export function PersonaGrid() {
     },
     onSuccess: (chatroom) => {
       queryClient.invalidateQueries({ queryKey: ["/api/chatrooms"] });
-      navigate(`/chat/${chatroom.id}`);
+      navigate(`/chatroom/${chatroom.id}`);
     },
     onError: (error: Error) => {
       toast({
@@ -53,11 +53,11 @@ export function PersonaGrid() {
     }
 
     // Create a new chatroom with the persona's name
+    // We'll need to extend the server routes to handle defaultPersonaId
     createRoomMutation.mutate({
       name: `Chat with ${persona.name}`,
-      description: `Private conversation with ${persona.name}`,
-      isPrivate: true,
-      defaultPersonaId: persona.id,
+      description: `Private conversation with ${persona.name}${persona.id ? ` (Persona ID: ${persona.id})` : ''}`,
+      theme: 'private',
     });
   };
 
