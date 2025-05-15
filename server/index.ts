@@ -56,27 +56,22 @@ app.use((req, res, next) => {
 // Function to initialize personas when the server starts
 async function initializePersonas() {
   try {
-    console.log('Checking if anime personas need to be initialized...');
-    const existingPersonas = await storage.getPersonas();
+    console.log('Forcing cleanup and initialization of anime personas...');
     
-    // Check if anime personas exist by looking for specific anime character names
-    const animeNames = ['Naruto Uzumaki', 'Spike Spiegel', 'Sailor Moon', 'Goku', 'Levi Ackerman', 'Totoro', 'Mikasa Ackerman', 'L Lawliet'];
-    const existingAnimePersonas = existingPersonas.filter(p => animeNames.includes(p.name));
+    // Always force the initialization of sample data
+    // This will delete unwanted personas and ensure only our 4 anime characters exist
+    await storage.initSampleData();
     
-    console.log(`Found ${existingPersonas.length} total personas, including ${existingAnimePersonas.length} anime personas.`);
+    // Verify the personas were created
+    const updatedPersonas = await storage.getPersonas();
+    const animeNames = ['Naruto Uzumaki', 'Goku', 'Sung Jin Woo', 'Monkey D. Luffy'];
+    const updatedAnimePersonas = updatedPersonas.filter(p => animeNames.includes(p.name));
+    console.log(`After initialization: ${updatedPersonas.length} total personas, ${updatedAnimePersonas.length} anime personas.`);
     
-    if (existingAnimePersonas.length < animeNames.length) {
-      console.log('Some anime personas are missing, forcing initialization...');
-      
-      // Force the initialization of sample data
-      await storage.initSampleData();
-      
-      // Verify the personas were created
-      const updatedPersonas = await storage.getPersonas();
-      const updatedAnimePersonas = updatedPersonas.filter(p => animeNames.includes(p.name));
-      console.log(`After initialization: ${updatedPersonas.length} total personas, ${updatedAnimePersonas.length} anime personas.`);
+    if (updatedAnimePersonas.length === animeNames.length) {
+      console.log('All 4 anime personas successfully initialized!');
     } else {
-      console.log('All anime personas already exist, no need to initialize.');
+      console.log(`Warning: Only ${updatedAnimePersonas.length} of 4 expected anime personas were found.`);
     }
   } catch (error) {
     console.error('Error initializing personas:', error);

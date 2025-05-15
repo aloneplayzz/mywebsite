@@ -149,12 +149,58 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Function to delete all unwanted anime personas
+  async deleteUnwantedAnimePersonas() {
+    try {
+      console.log("Deleting unwanted anime personas...");
+      const existingPersonas = await this.getPersonas();
+      
+      // List of anime personas we want to keep
+      const keepAnimeNames = ['Naruto Uzumaki', 'Goku', 'Sung Jin Woo', 'Monkey D. Luffy'];
+      
+      // List of anime personas we want to delete
+      const unwantedAnimeNames = [
+        'Spike Spiegel', 'Sailor Moon', 'Levi Ackerman', 'Totoro', 
+        'Mikasa Ackerman', 'L Lawliet', 'Nova', 'Captain Alex', 
+        'Synth-7', 'Zorb', 'Dr. Quantum', 'Stellar Rogue'
+      ];
+      
+      // Find personas to delete
+      const personasToDelete = existingPersonas.filter(p => 
+        unwantedAnimeNames.includes(p.name) || 
+        (p.name.includes('Persona') && p.isDefault)
+      );
+      
+      if (personasToDelete.length === 0) {
+        console.log("No unwanted anime personas found.");
+        return;
+      }
+      
+      console.log(`Found ${personasToDelete.length} unwanted anime personas to delete.`);
+      
+      // Delete each unwanted persona
+      for (const persona of personasToDelete) {
+        console.log(`Deleting unwanted persona: ${persona.name} (ID: ${persona.id})`);
+        await db
+          .delete(personas)
+          .where(eq(personas.id, persona.id));
+      }
+      
+      console.log("Unwanted anime personas deleted successfully.");
+    } catch (error) {
+      console.error("Error deleting unwanted anime personas:", error);
+    }
+  }
+
   async initSampleData() {
     try {
       // First, clean up any duplicate personas
       await this.removeDuplicatePersonas();
       
-      // Check if anime personas already exist
+      // Delete unwanted anime personas
+      await this.deleteUnwantedAnimePersonas();
+      
+      // Check if our desired anime personas already exist
       const existingPersonas = await this.getPersonas();
       const animeNames = ['Naruto Uzumaki', 'Goku', 'Sung Jin Woo', 'Monkey D. Luffy'];
       const existingAnimePersonas = existingPersonas.filter(p => animeNames.includes(p.name));
