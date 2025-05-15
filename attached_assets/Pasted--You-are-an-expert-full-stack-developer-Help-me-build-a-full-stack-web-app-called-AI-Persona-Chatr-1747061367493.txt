@@ -1,0 +1,59 @@
+
+You are an expert full stack developer. Help me build a full stack web app called “AI Persona Chatroom” using:
+
+* Frontend: Next.js (React)
+* Backend: Supabase (Auth, Realtime DB)
+* AI: OpenAI GPT-4 (or similar LLM) for character personas
+
+The goal is to create a fun, themed chatroom experience where users can roleplay as AI-driven personas (e.g., Sherlock Holmes, Elon Musk, or fantasy characters). Users can join or create chatrooms and chat as or with AI-powered characters.
+
+🔧 Features to implement:
+
+1. ✅ Authentication:
+
+   * Use Supabase Auth for login/signup (email/password or Google)
+
+2. 📁 Database (Supabase):
+
+   * users: id, username, avatar, created\_at
+   * chatrooms: id, name, description, created\_by, created\_at
+   * personas: id, name, description, sample\_prompt, avatar\_url
+   * messages: id, room\_id, user\_id (nullable if from AI), message, created\_at, persona\_id (if AI)
+
+3. 💬 Chatroom Logic:
+
+   * Realtime message updates via Supabase Realtime
+   * Users can send messages and see live updates
+   * If persona is selected, AI responds in-character using the conversation history and the persona's prompt
+
+4. 🧠 AI Persona Integration:
+
+   * Use GPT to simulate replies from a selected persona
+   * Prompt should include: persona name, backstory, sample tone/style, and recent chat history (e.g., last 10 messages)
+   * Example prompt format:
+
+     ```
+     You are {persona_name}. You’re chatting in a themed room. Speak in the style of your character. Here is the chat history:
+
+     {recent_messages}
+
+     Respond as {persona_name} in 1–2 sentences.
+     ```
+
+5. 🖥 Frontend (Next.js):
+
+   * /login → user login/signup
+   * /dashboard → list of chatrooms, create/join options
+   * /chatroom/\[id] → realtime chat UI with persona selector
+   * Components: ChatBubble, RoomCard, PersonaPicker, MessageInput
+
+6. 📦 Bonus Features (optional for now):
+
+   * Avatar generator using DALL·E or external service
+   * Favorite personas or rooms
+   * Dark/light mode toggle
+
+🔚 Final goal:
+Build this as an engaging, visually clean, and social-friendly experience. Use Tailwind CSS + shadcn/ui for styled components. Keep it scalable for future features like voice chat, image generation, or multi-agent personas.
+
+--

@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.js"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "${DATABASE_URL}",
+    "SESSION_SECRET": "${SESSION_SECRET}",
+    "GOOGLE_CLIENT_ID": "${GOOGLE_CLIENT_ID}",
+    "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
+    "DISCORD_CLIENT_ID": "${DISCORD_CLIENT_ID}",
+    "DISCORD_CLIENT_SECRET": "${DISCORD_CLIENT_SECRET}",
+    "GITHUB_CLIENT_ID": "${GITHUB_CLIENT_ID}",
+    "GITHUB_CLIENT_SECRET": "${GITHUB_CLIENT_SECRET}"
+  }
+}
