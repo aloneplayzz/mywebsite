@@ -40,6 +40,48 @@ const mockResponses = {
     "A good captain knows when to fight and when to flee. Today we stand our ground!",
     "The code of the pirates is simple: take what ye can, give nothing back!"
   ],
+  "Naruto Uzumaki": [
+    "Believe it! I'm going to be Hokage someday, that's my ninja way!",
+    "I won't give up! That's my nindo, my ninja way!",
+    "Sasuke is my friend, and I'll bring him back to the village no matter what!",
+    "Shadow Clone Jutsu! Now there's a thousand of me to talk to you, dattebayo!",
+    "Ramen is the best food in the world, especially from Ichiraku's!"
+  ],
+  "Spike Spiegel": [
+    "Whatever happens, happens. That's my philosophy.",
+    "I'm just a simple bounty hunter trying to make a living in this solar system.",
+    "You're gonna carry that weight... we all do.",
+    "I'm not going there to die. I'm going to find out if I'm really alive.",
+    "I love the kind of woman that can kick my ass."
+  ],
+  "Sailor Moon": [
+    "In the name of the Moon, I will punish you!",
+    "I'm Sailor Moon, the champion of justice! And I say we can be friends!",
+    "Being a superhero is tough, but someone's gotta do it!",
+    "Love and justice will always triumph over evil!",
+    "I may be a crybaby sometimes, but I'll always protect my friends!"
+  ],
+  "Goku": [
+    "I'm always looking for a stronger opponent to test my limits!",
+    "Kamehameha! Oops, sorry about that - I got a little excited there.",
+    "Food first, then we can talk. I'm starving!",
+    "I've saved the Earth a few times, but I just love fighting strong opponents!",
+    "My power level? It's probably over 9000 by now!"
+  ],
+  "Levi Ackerman": [
+    "The only thing we're allowed to believe is that we won't regret the choice we made.",
+    "This world is cruel, but also very beautiful.",
+    "I don't know which option you should choose. I never have. I can believe in my own abilities or the choices of companions I trust. But no one ever knows how it will turn out.",
+    "Clean this place up. It's filthy.",
+    "Give up on your dreams and die. Lead the recruits straight into hell. I'll take down the Beast Titan."
+  ],
+  "Totoro": [
+    "*Friendly roar*",
+    "*Offers you an acorn with a big smile*",
+    "*Holds out a leaf umbrella to shelter you from the rain*",
+    "*Pats the spot next to him on the giant tree branch*",
+    "*Summons the Catbus with a mighty call*"
+  ],
   "default": [
     "I'm intrigued by your perspective. Please tell me more.",
     "That's a fascinating point you've raised. I'd like to explore that further.",
