@@ -101,8 +101,59 @@ export class DatabaseStorage implements IStorage {
     this.initSampleData();
   }
   
+  // Helper function to remove duplicate personas by name
+  async removeDuplicatePersonas() {
+    try {
+      console.log("Checking for duplicate personas...");
+      const allPersonas = await this.getPersonas();
+      
+      // Group personas by name
+      const personasByName: Record<string, Persona[]> = {};
+      allPersonas.forEach(persona => {
+        if (!personasByName[persona.name]) {
+          personasByName[persona.name] = [];
+        }
+        personasByName[persona.name].push(persona);
+      });
+      
+      // Find names with duplicates
+      const namesWithDuplicates = Object.keys(personasByName).filter(name => personasByName[name].length > 1);
+      
+      if (namesWithDuplicates.length === 0) {
+        console.log("No duplicate personas found.");
+        return;
+      }
+      
+      console.log(`Found ${namesWithDuplicates.length} persona names with duplicates: ${namesWithDuplicates.join(', ')}`);
+      
+      // For each name with duplicates, keep the first one and delete the rest
+      for (const name of namesWithDuplicates) {
+        const duplicates = personasByName[name];
+        console.log(`Handling ${duplicates.length} duplicates for '${name}'`);
+        
+        // Keep the first one (index 0) and delete the rest
+        for (let i = 1; i < duplicates.length; i++) {
+          const duplicateId = duplicates[i].id;
+          console.log(`Deleting duplicate persona '${name}' with ID ${duplicateId}`);
+          
+          // Delete directly from the database to bypass our normal delete checks
+          await db
+            .delete(personas)
+            .where(eq(personas.id, duplicateId));
+        }
+      }
+      
+      console.log("Duplicate persona cleanup complete.");
+    } catch (error) {
+      console.error("Error removing duplicate personas:", error);
+    }
+  }
+
   async initSampleData() {
     try {
+      // First, clean up any duplicate personas
+      await this.removeDuplicatePersonas();
+      
       // Check if anime personas already exist
       const existingPersonas = await this.getPersonas();
       const animeNames = ['Naruto Uzumaki', 'Spike Spiegel', 'Sailor Moon', 'Goku', 'Levi Ackerman', 'Totoro', 'Mikasa Ackerman', 'L Lawliet'];
