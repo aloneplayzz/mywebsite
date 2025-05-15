@@ -103,10 +103,15 @@ export class DatabaseStorage implements IStorage {
   
   async initSampleData() {
     try {
-      // Check if personas already exist
+      // Check if anime personas already exist
       const existingPersonas = await this.getPersonas();
-      if (existingPersonas.length === 0) {
-        console.log("No personas found, creating default personas including anime characters...");
+      const animeNames = ['Naruto Uzumaki', 'Spike Spiegel', 'Sailor Moon', 'Goku', 'Levi Ackerman', 'Totoro', 'Mikasa Ackerman', 'L Lawliet'];
+      const existingAnimePersonas = existingPersonas.filter(p => animeNames.includes(p.name));
+      
+      // If no personas exist or some anime personas are missing, create them
+      if (existingPersonas.length === 0 || existingAnimePersonas.length < animeNames.length) {
+        console.log("Creating or updating personas including anime characters...");
+        
         // Create sample personas
         const samplePersonas: InsertPersona[] = [
           {
@@ -764,6 +769,17 @@ export class DatabaseStorage implements IStorage {
         isPublic: insertPersona.isPublic ?? true
       };
       
+      // Check if a persona with this name already exists
+      const existingPersonas = await this.getPersonas();
+      const existingPersona = existingPersonas.find(p => p.name === insertPersona.name);
+      
+      if (existingPersona) {
+        console.log(`Persona with name '${insertPersona.name}' already exists, skipping creation.`);
+        return existingPersona;
+      }
+      
+      // Create the new persona
+      console.log(`Creating new persona: ${insertPersona.name}`);
       const [persona] = await db
         .insert(personas)
         .values(personaData)

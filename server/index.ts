@@ -56,15 +56,27 @@ app.use((req, res, next) => {
 // Function to initialize personas when the server starts
 async function initializePersonas() {
   try {
-    console.log('Checking if personas need to be initialized...');
+    console.log('Checking if anime personas need to be initialized...');
     const existingPersonas = await storage.getPersonas();
     
-    if (existingPersonas.length === 0) {
-      console.log('No personas found, forcing initialization...');
+    // Check if anime personas exist by looking for specific anime character names
+    const animeNames = ['Naruto Uzumaki', 'Spike Spiegel', 'Sailor Moon', 'Goku', 'Levi Ackerman', 'Totoro', 'Mikasa Ackerman', 'L Lawliet'];
+    const existingAnimePersonas = existingPersonas.filter(p => animeNames.includes(p.name));
+    
+    console.log(`Found ${existingPersonas.length} total personas, including ${existingAnimePersonas.length} anime personas.`);
+    
+    if (existingAnimePersonas.length < animeNames.length) {
+      console.log('Some anime personas are missing, forcing initialization...');
+      
+      // Force the initialization of sample data
       await storage.initSampleData();
-      console.log('Personas initialization complete!');
+      
+      // Verify the personas were created
+      const updatedPersonas = await storage.getPersonas();
+      const updatedAnimePersonas = updatedPersonas.filter(p => animeNames.includes(p.name));
+      console.log(`After initialization: ${updatedPersonas.length} total personas, ${updatedAnimePersonas.length} anime personas.`);
     } else {
-      console.log(`Found ${existingPersonas.length} existing personas, no need to initialize.`);
+      console.log('All anime personas already exist, no need to initialize.');
     }
   } catch (error) {
     console.error('Error initializing personas:', error);
