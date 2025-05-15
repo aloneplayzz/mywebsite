@@ -16,7 +16,11 @@ export function setupGitHubAuth(app: Express): void {
         {
           clientID: process.env.GITHUB_CLIENT_ID,
           clientSecret: process.env.GITHUB_CLIENT_SECRET,
-          callbackURL: "/api/auth/github/callback",
+          callbackURL: process.env.NODE_ENV === "production" 
+            ? process.env.RENDER_EXTERNAL_URL 
+              ? `${process.env.RENDER_EXTERNAL_URL}/api/auth/github/callback` 
+              : "/api/auth/github/callback"
+            : "/api/auth/github/callback",
           scope: ["user:email"]
         },
         async (accessToken: string, refreshToken: string, profile: GitHubProfile, done: VerifyCallback) => {
