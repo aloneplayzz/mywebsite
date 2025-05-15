@@ -2,7 +2,20 @@ import { Persona, ChatMessage } from "@shared/schema";
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import fs from 'fs';
 import path from 'path';
+// Load environment variables from .env file if it exists
 import dotenv from 'dotenv';
+
+// Only load dotenv if the .env file exists
+try {
+  if (fs.existsSync('.env')) {
+    dotenv.config();
+    console.log('[OpenAI] Loaded environment variables from .env file');
+  } else {
+    console.log('[OpenAI] .env file not found, using environment variables from the system');
+  }
+} catch (error) {
+  console.warn('[OpenAI] Error loading .env file:', error);
+}
 
 // Mock responses for different persona types as fallback
 const mockResponses = {

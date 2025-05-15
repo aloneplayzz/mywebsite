@@ -1,4 +1,19 @@
-import 'dotenv/config';
+// Load environment variables from .env file if it exists
+import { config } from 'dotenv';
+import * as fs from 'fs';
+
+try {
+  // Check if .env file exists before trying to load it
+  if (fs.existsSync('.env')) {
+    config();
+    console.log('Loaded environment variables from .env file');
+  } else {
+    console.log('.env file not found, using environment variables from the system');
+  }
+} catch (error) {
+  console.warn('Error loading .env file:', error);
+  console.log('Continuing with environment variables from the system');
+}
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
