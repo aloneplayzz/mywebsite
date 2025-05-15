@@ -11,16 +11,23 @@ if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
 export function setupGitHubAuth(app: Express): void {
   // Configure GitHub Strategy
   if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+    // Determine the callback URL
+    const callbackURL = process.env.NODE_ENV === "production" 
+      ? process.env.RENDER_EXTERNAL_URL 
+        ? `${process.env.RENDER_EXTERNAL_URL}/api/auth/github/callback` 
+        : "/api/auth/github/callback"
+      : "/api/auth/github/callback";
+      
+    // Log the callback URL for debugging
+    console.log("GitHub OAuth callback URL:", callbackURL);
+    console.log("RENDER_EXTERNAL_URL:", process.env.RENDER_EXTERNAL_URL);
+    
     passport.use(
       new GitHubStrategy(
         {
           clientID: process.env.GITHUB_CLIENT_ID,
           clientSecret: process.env.GITHUB_CLIENT_SECRET,
-          callbackURL: process.env.NODE_ENV === "production" 
-            ? process.env.RENDER_EXTERNAL_URL 
-              ? `${process.env.RENDER_EXTERNAL_URL}/api/auth/github/callback` 
-              : "/api/auth/github/callback"
-            : "/api/auth/github/callback",
+          callbackURL: callbackURL,
           scope: ["user:email"]
         },
         async (accessToken: string, refreshToken: string, profile: GitHubProfile, done: VerifyCallback) => {

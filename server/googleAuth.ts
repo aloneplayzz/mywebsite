@@ -58,16 +58,23 @@ export function setupGoogleAuth(app: Express): void {
 
   // Configure Google Strategy
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    // Determine the callback URL
+    const callbackURL = process.env.NODE_ENV === "production" 
+      ? process.env.RENDER_EXTERNAL_URL 
+        ? `${process.env.RENDER_EXTERNAL_URL}/api/auth/google/callback` 
+        : "/api/auth/google/callback"
+      : "/api/auth/google/callback";
+      
+    // Log the callback URL for debugging
+    console.log("Google OAuth callback URL:", callbackURL);
+    console.log("RENDER_EXTERNAL_URL:", process.env.RENDER_EXTERNAL_URL);
+    
     passport.use(
       new GoogleStrategy(
         {
           clientID: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          callbackURL: process.env.NODE_ENV === "production" 
-            ? process.env.RENDER_EXTERNAL_URL 
-              ? `${process.env.RENDER_EXTERNAL_URL}/api/auth/google/callback` 
-              : "/api/auth/google/callback"
-            : "/api/auth/google/callback"
+          callbackURL: callbackURL
         },
         async (accessToken, refreshToken, profile, done) => {
           try {

@@ -11,16 +11,23 @@ if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET) {
 export function setupDiscordAuth(app: Express): void {
   // Configure Discord Strategy
   if (process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) {
+    // Determine the callback URL
+    const callbackURL = process.env.NODE_ENV === "production" 
+      ? process.env.RENDER_EXTERNAL_URL 
+        ? `${process.env.RENDER_EXTERNAL_URL}/api/auth/discord/callback` 
+        : "/api/auth/discord/callback"
+      : "/api/auth/discord/callback";
+      
+    // Log the callback URL for debugging
+    console.log("Discord OAuth callback URL:", callbackURL);
+    console.log("RENDER_EXTERNAL_URL:", process.env.RENDER_EXTERNAL_URL);
+    
     passport.use(
       new DiscordStrategy(
         {
           clientID: process.env.DISCORD_CLIENT_ID,
           clientSecret: process.env.DISCORD_CLIENT_SECRET,
-          callbackURL: process.env.NODE_ENV === "production" 
-            ? process.env.RENDER_EXTERNAL_URL 
-              ? `${process.env.RENDER_EXTERNAL_URL}/api/auth/discord/callback` 
-              : "/api/auth/discord/callback"
-            : "/api/auth/discord/callback",
+          callbackURL: callbackURL,
           scope: ["identify", "email"]
         },
         async (accessToken: string, refreshToken: string, profile: DiscordProfile, done: VerifyCallback) => {
