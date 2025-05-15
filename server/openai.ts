@@ -49,11 +49,24 @@ const mockResponses = {
   ]
 };
 
-// Explicitly load the .env file
-const envPath = path.resolve(process.cwd(), '.env');
-const envConfig = dotenv.parse(fs.readFileSync(envPath));
+// Get the Gemini API key from environment variables
+let envConfig: Record<string, string> = {};
 
-// Initialize the Gemini API with the API key from .env
+// Try to load from .env file, but don't fail if it doesn't exist
+try {
+  const envPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    envConfig = dotenv.parse(fs.readFileSync(envPath));
+    console.log("Loaded Gemini API key from .env file");
+  } else {
+    console.log("No .env file found for Gemini API key, using system environment variables");
+  }
+} catch (error) {
+  console.warn("Error reading .env file for Gemini API key:", error);
+  console.log("Falling back to system environment variables");
+}
+
+// Initialize the Gemini API with the API key from .env or environment variables
 const apiKey = envConfig.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
 console.log("Using Gemini API Key:", apiKey ? "[Key is set]" : "[No key found]");
 
