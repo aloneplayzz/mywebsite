@@ -17,6 +17,7 @@ try {
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
 
 const app = express();
 app.use(express.json());
@@ -52,8 +53,29 @@ app.use((req, res, next) => {
   next();
 });
 
+// Function to initialize personas when the server starts
+async function initializePersonas() {
+  try {
+    console.log('Checking if personas need to be initialized...');
+    const existingPersonas = await storage.getPersonas();
+    
+    if (existingPersonas.length === 0) {
+      console.log('No personas found, forcing initialization...');
+      await storage.initSampleData();
+      console.log('Personas initialization complete!');
+    } else {
+      console.log(`Found ${existingPersonas.length} existing personas, no need to initialize.`);
+    }
+  } catch (error) {
+    console.error('Error initializing personas:', error);
+  }
+}
+
 (async () => {
   const server = await registerRoutes(app);
+  
+  // Initialize personas when the server starts
+  await initializePersonas();
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
