@@ -101,7 +101,7 @@ export class DatabaseStorage implements IStorage {
     this.initSampleData();
   }
   
-  private async initSampleData() {
+  async initSampleData() {
     try {
       // Check if personas already exist
       const existingPersonas = await this.getPersonas();

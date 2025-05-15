@@ -11,6 +11,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "db:push": "drizzle-kit push",
+    "init-personas": "tsx server/init-personas.ts",
     "vercel-build": "npm run build"
   },
   "dependencies": {
