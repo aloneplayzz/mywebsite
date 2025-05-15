@@ -128,13 +128,23 @@ export function PersonaGrid() {
       return;
     }
 
+    if (!persona.id) {
+      toast({
+        title: "Error",
+        description: "This persona doesn't have a valid ID.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Create a new chatroom with the persona's name
-    // We need to include the current user's ID as createdBy
+    // Include the selected persona ID in the selectedPersonas array
     createRoomMutation.mutate({
       name: `Chat with ${persona.name}`,
       description: `Private conversation with ${persona.name}${persona.id ? ` (Persona ID: ${persona.id})` : ''}`,
       theme: 'private',
       createdBy: user!.id,
+      selectedPersonas: [persona.id], // Add the selected persona ID to the chatroom
     });
   };
 
