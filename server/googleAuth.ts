@@ -50,7 +50,7 @@ export function getSession() {
   });
 }
 
-export function setupAuth(app: Express): void {
+export function setupGoogleAuth(app: Express): void {
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
@@ -63,22 +63,41 @@ export function setupAuth(app: Express): void {
         {
           clientID: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          callbackURL: "/api/auth/google/callback"
+          callbackURL: process.env.NODE_ENV === "production" 
+            ? "https://ai-persona-chatroom-app.windsurf.build/.netlify/functions/api/auth/google/callback"
+            : "/api/auth/google/callback"
         },
         async (accessToken, refreshToken, profile, done) => {
           try {
-            // Create user object from Google profile
-            const userInfo = {
-              id: profile.id,
-              email: profile.emails?.[0]?.value || null,
-              firstName: profile.name?.givenName || null,
-              lastName: profile.name?.familyName || null,
-              profileImageUrl: profile.photos?.[0]?.value || null,
-              provider: "google"
-            };
+            // First check if a user with this email already exists
+            const email = profile.emails?.[0]?.value || null;
+            let existingUser = null;
+            
+            if (email) {
+              // Try to find a user with the same email in the database
+              const allUsers = await storage.getAllUsers();
+              existingUser = allUsers.find(user => user.email === email);
+            }
+            
+            let savedUser;
+            
+            if (existingUser) {
+              // User with this email already exists, use that user
+              savedUser = existingUser;
+            } else {
+              // Create user object from Google profile
+              const userInfo = {
+                id: profile.id,
+                email: email,
+                firstName: profile.name?.givenName || null,
+                lastName: profile.name?.familyName || null,
+                profileImageUrl: profile.photos?.[0]?.value || null,
+                provider: "google"
+              };
 
-            // Upsert user in database
-            const savedUser = await storage.upsertUser(userInfo);
+              // Upsert user in database
+              savedUser = await storage.upsertUser(userInfo);
+            }
             
             // Create a simplified session user
             const sessionUser: UserSession = {

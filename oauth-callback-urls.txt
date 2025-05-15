@@ -1,0 +1,17 @@
+# OAuth Callback URLs for AI Persona Chatroom App
+
+## Google OAuth
+https://ai-persona-chatroom-app.windsurf.build/.netlify/functions/api/auth/google/callback
+
+## GitHub OAuth
+https://ai-persona-chatroom-app.windsurf.build/.netlify/functions/api/auth/github/callback
+
+## Discord OAuth
+https://ai-persona-chatroom-app.windsurf.build/.netlify/functions/api/auth/discord/callback
+
+# Notes
+- Add these URLs to your respective OAuth provider developer consoles
+- Make sure the redirect URIs exactly match these URLs, including the https:// prefix
+- For Google OAuth, add this URL to the "Authorized redirect URIs" section
+- For GitHub OAuth, add this URL to the "Authorization callback URL" field
+- For Discord OAuth, add this URL to the "Redirects" section under OAuth2

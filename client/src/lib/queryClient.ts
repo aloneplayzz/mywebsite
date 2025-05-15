@@ -1,5 +1,16 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Helper to get the correct API base URL based on environment
+export function getApiBaseUrl() {
+  // Check if we're in production (Netlify)
+  if (window.location.hostname.includes('windsurf.build') || 
+      window.location.hostname.includes('netlify.app')) {
+    return '/.netlify/functions/api';
+  }
+  // Local development
+  return '/api';
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -12,7 +23,14 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  // Adjust URL if it's an API endpoint and doesn't already have the full path
+  let fullUrl = url;
+  if (url.startsWith('/api/') && !url.includes('/.netlify/functions/api')) {
+    const baseUrl = getApiBaseUrl();
+    fullUrl = url.replace('/api/', `${baseUrl}/`);
+  }
+  
+  const res = await fetch(fullUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -29,7 +47,15 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    let url = queryKey[0] as string;
+    
+    // Adjust URL if it's an API endpoint and doesn't already have the full path
+    if (url.startsWith('/api/') && !url.includes('/.netlify/functions/api')) {
+      const baseUrl = getApiBaseUrl();
+      url = url.replace('/api/', `${baseUrl}/`);
+    }
+    
+    const res = await fetch(url, {
       credentials: "include",
     });
 

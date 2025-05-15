@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.js"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "postgres://avnadmin:AVNS_4jjy7u4ARkx3JEOPSMA@64.227.160.247:17657/defaultdb?sslmode=disable",
+    "SESSION_SECRET": "JAUyesWqYTq8mUZsb50+y/FKlnhPXU8yI2V0IHha1V/0lm4T+Xe/08KTCaookDDpRKRsnCeg4urGoxTvYmWgnA==",
+    "GOOGLE_CLIENT_ID": "830080163736-mmhdgq25m9knj5hk3f9b96eqgnfo5cdu.apps.googleusercontent.com",
+    "GOOGLE_CLIENT_SECRET": "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",
+    "DISCORD_CLIENT_ID": "1370781923583983676",
+    "DISCORD_CLIENT_SECRET": "oA6SNnIXPFeJl77wWyLGIdlsujyD-Ymc",
+    "GITHUB_CLIENT_ID": "Ov23liHG2mPzQPGc4fDQ",
+    "GITHUB_CLIENT_SECRET": "a0a7bf709f12725ee203460833e62ae4aeed0880"
+  }
+}

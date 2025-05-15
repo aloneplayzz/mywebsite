@@ -1,7 +1,8 @@
-import { ChatroomWithStats } from "@shared/schema";
+import { ChatroomWithStats, Persona } from "@shared/schema";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 interface RoomCardProps {
-  room: ChatroomWithStats;
+  room: ChatroomWithStats & { personas?: Persona[] };
   onClick: () => void;
 }
 
@@ -70,6 +71,25 @@ export default function RoomCard({ room, onClick }: RoomCardProps) {
       <p className={`text-sm ${styles.description} mt-1 line-clamp-2`}>
         {room.description}
       </p>
+      
+      {/* Display personas if available */}
+      {room.personas && room.personas.length > 0 && (
+        <div className="flex mt-3 space-x-1 overflow-hidden">
+          {room.personas.slice(0, 5).map((persona) => (
+            <Avatar key={persona.id} className="h-6 w-6 border border-white">
+              <AvatarImage src={persona.avatarUrl} alt={persona.name} />
+              <AvatarFallback className="text-xs">
+                {persona.name.substring(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+          ))}
+          {room.personas.length > 5 && (
+            <div className="h-6 w-6 rounded-full bg-neutral-100 flex items-center justify-center text-xs text-neutral-600">
+              +{room.personas.length - 5}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

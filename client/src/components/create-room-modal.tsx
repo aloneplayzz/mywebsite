@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { 
@@ -14,9 +14,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { InsertChatroom } from "@shared/schema";
+import { InsertChatroom, Persona } from "@shared/schema";
+
+// Extended InsertChatroom type with selectedPersonas
+interface ExtendedInsertChatroom extends InsertChatroom {
+  selectedPersonas?: number[];
+}
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Check, Loader2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const themeOptions = [
   { id: "fantasy", name: "Fantasy", gradient: "from-purple-500 to-pink-500" },
@@ -37,9 +44,20 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [theme, setTheme] = useState("scifi");
+  const [selectedPersonas, setSelectedPersonas] = useState<number[]>([]);
+  
+  // Fetch available personas
+  const {
+    data: personas,
+    isLoading: isLoadingPersonas,
+    error: personasError
+  } = useQuery<Persona[]>({
+    queryKey: ["/api/personas"],
+    enabled: isOpen, // Only fetch when modal is open
+  });
   
   const createChatroomMutation = useMutation({
-    mutationFn: async (data: InsertChatroom) => {
+    mutationFn: async (data: ExtendedInsertChatroom) => {
       const res = await apiRequest("POST", "/api/chatrooms", data);
       return await res.json();
     },
@@ -85,6 +103,15 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
       return;
     }
     
+    if (selectedPersonas.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one AI persona for your chatroom",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!user) {
       toast({
         title: "Authentication Error",
@@ -99,12 +126,22 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
       description: description.trim(),
       createdBy: user.id,
       theme,
+      selectedPersonas, // Add selected personas to the mutation
     });
+  };
+  
+  // Toggle persona selection
+  const togglePersona = (personaId: number) => {
+    setSelectedPersonas(prev => 
+      prev.includes(personaId)
+        ? prev.filter(id => id !== personaId)
+        : [...prev, personaId]
+    );
   };
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Create New Chatroom</DialogTitle>
           <DialogDescription>
@@ -112,7 +149,8 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+        <ScrollArea className="pr-4 max-h-[70vh]">
+          <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="room-name">Room Name</Label>
             <Input 
@@ -158,6 +196,65 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
             </div>
           </div>
           
+          <div className="space-y-2">
+            <Label className="flex items-center justify-between">
+              <span>Select AI Personas</span>
+              <span className="text-xs text-muted-foreground">{selectedPersonas.length} selected</span>
+            </Label>
+            
+            {isLoadingPersonas ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading personas...</span>
+              </div>
+            ) : personasError ? (
+              <div className="text-center py-4 text-destructive">
+                <p>Error loading personas</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/personas"] })}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-1">
+                {personas?.map((persona) => (
+                  <div 
+                    key={persona.id}
+                    className={`border rounded-lg p-2 cursor-pointer transition-all ${
+                      selectedPersonas.includes(persona.id) 
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20" 
+                        : "border-border hover:border-primary/50"
+                    }`}
+                    onClick={() => togglePersona(persona.id)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                        <img 
+                          src={persona.avatarUrl} 
+                          alt={persona.name} 
+                          className="w-full h-full object-cover"
+                        />
+                        {selectedPersonas.includes(persona.id) && (
+                          <div className="absolute inset-0 bg-primary/30 flex items-center justify-center">
+                            <Check className="h-5 w-5 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{persona.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{persona.description.substring(0, 30)}...</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
           <DialogFooter className="sm:justify-end mt-6">
             <Button
               type="button"
@@ -169,7 +266,7 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
             </Button>
             <Button
               type="submit"
-              disabled={createChatroomMutation.isPending}
+              disabled={createChatroomMutation.isPending || selectedPersonas.length === 0}
             >
               {createChatroomMutation.isPending ? (
                 <>
@@ -183,6 +280,7 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
             </Button>
           </DialogFooter>
         </form>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

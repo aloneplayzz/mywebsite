@@ -118,47 +118,67 @@ export function setupWebsockets(server: Server) {
       return sendErrorToClient(ws, 'You must join a room before sending messages');
     }
     
-    // Store the user message
-    const userMessage = await storage.createMessage({
-      roomId,
-      userId, // userId is already a string
-      message,
-      personaId: undefined,
-    });
-    
-    // Augment with user info
-    const user = await storage.getUser(userId.toString());
-    const chatMessage: ChatMessage = {
-      ...userMessage,
-      user
-    };
-    
-    // Broadcast the message to all clients in the room
-    broadcastToRoom(roomId, {
-      type: 'new_message',
-      payload: chatMessage
-    });
-    
-    // If a persona is selected, generate an AI response
-    if (personaId) {
-      // Send typing indicator
-      broadcastToRoom(roomId, {
-        type: 'persona_typing',
-        payload: { personaId, roomId }
+    try {
+      // Store the user message
+      const userMessage = await storage.createMessage({
+        roomId,
+        userId, // userId is already a string
+        message,
+        personaId: undefined,
       });
       
-      // Get recent messages for context
-      const recentMessages = await storage.getMessagesByRoom(roomId, 10);
+      // Augment with user info
+      const user = await storage.getUser(userId.toString());
+      const chatMessage: ChatMessage = {
+        ...userMessage,
+        user
+      };
       
-      // Get persona details
-      const persona = await storage.getPersona(personaId);
-      
-      if (persona) {
+      // Broadcast the message to all clients in the room
+      broadcastToRoom(roomId, {
+        type: 'new_message',
+        payload: chatMessage
+      });
+    
+      // If a persona was specified, generate an AI response
+      if (personaId) {
         try {
-          // Generate AI response
-          const aiResponse = await generateAIResponse(persona, recentMessages);
+          // Send typing indicator
+          broadcastToRoom(roomId, {
+            type: 'persona_typing',
+            payload: { personaId, roomId }
+          });
           
-          // Store the AI message
+          // Get the persona
+          const persona = await storage.getPersona(personaId);
+          if (!persona) {
+            return sendErrorToClient(ws, 'Persona not found');
+          }
+          
+          // Create a special context array with just the latest user message and minimal history
+          // This ensures the AI responds to the current message
+          const specialContext: ChatMessage[] = [
+            // The latest user message (the one that was just sent)
+            {
+              ...userMessage,
+              user
+            }
+          ];
+          
+          // Add a few previous messages for context, but not too many
+          const previousMessages = await storage.getMessagesByRoom(roomId, 5);
+          // Filter out the current message (which would be first in the list) and add only a few previous ones
+          const filteredPreviousMessages = previousMessages
+            .filter(msg => msg.id !== userMessage.id)
+            .slice(0, 3);
+          
+          // Combine the context with the current message first (most important)
+          const aiContext = [...specialContext, ...filteredPreviousMessages];
+          
+          // Generate AI response with focused context
+          const aiResponse = await generateAIResponse(persona, aiContext);
+          
+          // Store the AI response
           const aiMessage = await storage.createMessage({
             roomId,
             userId: undefined,
@@ -167,20 +187,23 @@ export function setupWebsockets(server: Server) {
           });
           
           // Augment with persona info
-          const chatAiMessage: ChatMessage = {
+          const aiChatMessage: ChatMessage = {
             ...aiMessage,
             persona
           };
           
-          // Broadcast the AI message to all clients in the room
+          // Broadcast the AI response to all clients in the room
           broadcastToRoom(roomId, {
             type: 'new_message',
-            payload: chatAiMessage
+            payload: aiChatMessage
           });
         } catch (error) {
           console.error('Error generating AI response:', error);
           
           try {
+            // Get the persona for the error message
+            const persona = await storage.getPersona(personaId);
+            
             // Create a fallback error message from the persona
             const errorMessage = await storage.createMessage({
               roomId,
@@ -209,6 +232,9 @@ export function setupWebsockets(server: Server) {
           }
         }
       }
+    } catch (error) {
+      console.error('Error handling message:', error);
+      sendErrorToClient(ws, 'Failed to process your message');
     }
   }
   

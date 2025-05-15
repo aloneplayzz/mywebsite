@@ -1,7 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./googleAuth";
+import { setupAuth } from "./auth";
+import { setupGoogleAuth, isAuthenticated } from "./googleAuth";
+import { setupGitHubAuth } from "./githubAuth";
+import { setupDiscordAuth } from "./discordAuth";
 import { setupWebsockets } from "./websocket";
 import { 
   insertChatroomSchema, 
@@ -14,17 +17,66 @@ import { z } from "zod";
 import { ZodError } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Set up authentication routes with Replit OAuth
-  await setupAuth(app);
+  // Set up base authentication
+  setupAuth(app);
+  
+  // Set up OAuth providers
+  await setupGoogleAuth(app);
+  setupGitHubAuth(app);
+  setupDiscordAuth(app);
 
   // API routes for chatrooms
-  app.get("/api/chatrooms", async (req, res) => {
+  app.get("/api/chatrooms", isAuthenticated, async (req: any, res) => {
     try {
-      const chatrooms = await storage.getChatrooms();
+      // Only return chatrooms the user is a member of
+      const userId = req.user.id; // Now we can safely access user.id since isAuthenticated ensures it exists
+      const chatrooms = await storage.getChatrooms(userId);
       res.json(chatrooms);
     } catch (error) {
       console.error("Error fetching chatrooms:", error);
       res.status(500).json({ message: "Failed to fetch chatrooms" });
+    }
+  });
+  
+  // API routes for chatroom personas
+  app.get("/api/chatrooms/:id/personas", async (req, res) => {
+    try {
+      const chatroomId = parseInt(req.params.id);
+      if (isNaN(chatroomId)) {
+        return res.status(400).json({ message: "Invalid chatroom ID" });
+      }
+      
+      const personas = await storage.getChatroomPersonas(chatroomId);
+      res.json(personas);
+    } catch (error) {
+      console.error("Error fetching chatroom personas:", error);
+      res.status(500).json({ message: "Failed to fetch chatroom personas" });
+    }
+  });
+  
+  app.post("/api/chatrooms/:id/personas", isAuthenticated, async (req: any, res) => {
+    try {
+      const chatroomId = parseInt(req.params.id);
+      if (isNaN(chatroomId)) {
+        return res.status(400).json({ message: "Invalid chatroom ID" });
+      }
+      
+      // Check if user is owner or moderator
+      const isModOrOwner = await storage.isChatroomModerator(chatroomId, req.user.id);
+      if (!isModOrOwner) {
+        return res.status(403).json({ message: "You don't have permission to add personas to this chatroom" });
+      }
+      
+      const { personaId } = req.body;
+      if (!personaId || typeof personaId !== 'number') {
+        return res.status(400).json({ message: "Invalid persona ID" });
+      }
+      
+      const association = await storage.addPersonaToChatroom(chatroomId, personaId);
+      res.status(201).json(association);
+    } catch (error) {
+      console.error("Error adding persona to chatroom:", error);
+      res.status(500).json({ message: "Failed to add persona to chatroom" });
     }
   });
 
@@ -41,13 +93,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const activeUsers = storage.getActiveUsers(chatroomId);
+      const personas = await storage.getChatroomPersonas(chatroomId);
+      
       res.json({
         ...chatroom,
-        activeUsers: activeUsers.length
+        activeUsers: activeUsers.length,
+        personas: personas
       });
     } catch (error) {
       console.error("Error fetching chatroom:", error);
       res.status(500).json({ message: "Failed to fetch chatroom" });
+    }
+  });
+
+  app.delete("/api/chatrooms/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const chatroomId = parseInt(req.params.id);
+      if (isNaN(chatroomId)) {
+        return res.status(400).json({ message: "Invalid chatroom ID" });
+      }
+      
+      const chatroom = await storage.getChatroom(chatroomId);
+      if (!chatroom) {
+        return res.status(404).json({ message: "Chatroom not found" });
+      }
+      
+      // Only allow the owner to delete the chatroom
+      const isOwner = await storage.isChatroomOwner(chatroomId, req.user.id);
+      if (!isOwner) {
+        return res.status(403).json({ message: "Only the chatroom owner can delete the chatroom" });
+      }
+      
+      await storage.deleteChatroom(chatroomId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting chatroom:", error);
+      res.status(500).json({ message: "Failed to delete chatroom" });
     }
   });
 
@@ -63,7 +144,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Automatically add the creator as an owner
       await storage.addChatroomMember(chatroom.id, req.user.id, 'owner');
       
-      res.status(201).json(chatroom);
+      // Get the associated personas to return with the response
+      const personas = await storage.getChatroomPersonas(chatroom.id);
+      
+      res.status(201).json({
+        ...chatroom,
+        personas
+      });
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({ 
@@ -105,30 +192,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // API routes for personas
-  app.get("/api/personas", async (req, res) => {
+  app.get("/api/personas", async (req: any, res) => {
     try {
-      const personas = await storage.getPersonas();
+      // If user is authenticated, include their personas and public ones
+      const userId = req.user?.id;
+      const includeDefault = req.query.includeDefault !== 'false';
+      const personas = await storage.getPersonas(userId, includeDefault);
       res.json(personas);
     } catch (error) {
       console.error("Error fetching personas:", error);
       res.status(500).json({ message: "Failed to fetch personas" });
     }
   });
-
-  app.post("/api/personas", isAuthenticated, async (req, res) => {
+  
+  // Get user's own personas
+  app.get("/api/personas/user", isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertPersonaSchema.parse(req.body);
+      const personas = await storage.getUserPersonas(req.user.id);
+      res.json(personas);
+    } catch (error) {
+      console.error("Error fetching user personas:", error);
+      res.status(500).json({ message: "Failed to fetch user personas" });
+    }
+  });
+  
+  // Get only public default personas
+  app.get("/api/personas/public", async (req, res) => {
+    try {
+      const personas = await storage.getPublicPersonas();
+      res.json(personas);
+    } catch (error) {
+      console.error("Error fetching public personas:", error);
+      res.status(500).json({ message: "Failed to fetch public personas" });
+    }
+  });
+  
+  // Search personas
+  app.get("/api/personas/search", async (req: any, res) => {
+    try {
+      const query = req.query.q;
+      if (!query) {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+      
+      const userId = req.user?.id;
+      const personas = await storage.searchPersonas(query, userId);
+      res.json(personas);
+    } catch (error) {
+      console.error("Error searching personas:", error);
+      res.status(500).json({ message: "Failed to search personas" });
+    }
+  });
+
+  app.post("/api/personas", isAuthenticated, async (req: any, res) => {
+    try {
+      // Add the user ID to the persona data
+      const validatedData = insertPersonaSchema.parse({
+        ...req.body,
+        createdBy: req.user.id,
+        isDefault: false // User-created personas are never default
+      });
+      
       const persona = await storage.createPersona(validatedData);
       res.status(201).json(persona);
     } catch (error) {
       if (error instanceof ZodError) {
-        return res.status(400).json({ 
-          message: "Validation error", 
-          errors: error.errors 
-        });
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       console.error("Error creating persona:", error);
       res.status(500).json({ message: "Failed to create persona" });
+    }
+  });
+  
+  // Delete a persona (only if it belongs to the user)
+  app.delete("/api/personas/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const personaId = parseInt(req.params.id);
+      if (isNaN(personaId)) {
+        return res.status(400).json({ message: "Invalid persona ID" });
+      }
+      
+      await storage.deletePersona(personaId, req.user.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting persona:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete persona";
+      res.status(error instanceof Error && 
+                (errorMessage.includes("not found") || 
+                 errorMessage.includes("permission") || 
+                 errorMessage.includes("cannot be deleted")) 
+                ? 403 : 500)
+         .json({ message: errorMessage });
     }
   });
 

@@ -51,17 +51,32 @@ export const chatroomMembers = pgTable("chatroom_members", {
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
+// Chatroom-Persona associations
+export const chatroomPersonas = pgTable("chatroom_personas", {
+  id: serial("id").primaryKey(),
+  chatroomId: integer("chatroom_id").notNull().references(() => chatrooms.id),
+  personaId: integer("persona_id").notNull().references(() => personas.id),
+  addedAt: timestamp("added_at").defaultNow(),
+});
+
 export const insertChatroomSchema = createInsertSchema(chatrooms).pick({
   name: true,
   description: true,
   createdBy: true,
   theme: true,
+}).extend({
+  selectedPersonas: z.array(z.number()).optional(),
 });
 
 export const insertChatroomMemberSchema = createInsertSchema(chatroomMembers).pick({
   chatroomId: true,
   userId: true,
   role: true,
+});
+
+export const insertChatroomPersonaSchema = createInsertSchema(chatroomPersonas).pick({
+  chatroomId: true,
+  personaId: true,
 });
 
 // Persona categories
@@ -89,6 +104,9 @@ export const personas = pgTable("personas", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   customizable: boolean("customizable").default(false),
+  createdBy: varchar("created_by").references(() => users.id),
+  isPublic: boolean("is_public").default(true),
+  isDefault: boolean("is_default").default(false),
 });
 
 export const insertPersonaSchema = createInsertSchema(personas).pick({
@@ -98,6 +116,9 @@ export const insertPersonaSchema = createInsertSchema(personas).pick({
   avatarUrl: true,
   categoryId: true,
   customizable: true,
+  createdBy: true,
+  isPublic: true,
+  isDefault: true,
 });
 
 // Attachment types
@@ -157,6 +178,9 @@ export type InsertChatroom = z.infer<typeof insertChatroomSchema>;
 export type ChatroomMember = typeof chatroomMembers.$inferSelect;
 export type InsertChatroomMember = z.infer<typeof insertChatroomMemberSchema>;
 
+export type ChatroomPersona = typeof chatroomPersonas.$inferSelect;
+export type InsertChatroomPersona = z.infer<typeof insertChatroomPersonaSchema>;
+
 export type PersonaCategory = typeof personaCategories.$inferSelect;
 export type InsertPersonaCategory = z.infer<typeof insertPersonaCategorySchema>;
 
@@ -178,9 +202,12 @@ export type ChatMessage = Message & {
   user?: User;
   persona?: PersonaWithCategory;
   attachments?: Attachment[];
+  isLoading?: boolean; // Added for UI loading state
+  loadingId?: string; // Unique ID to track loading messages
 };
 
 export type ChatroomWithStats = Chatroom & {
   activeUsers: number;
   messageCount?: number;
+  personas?: PersonaWithCategory[];
 };

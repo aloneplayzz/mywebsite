@@ -2,6 +2,7 @@ import {
   users, insertUserSchema,
   chatrooms, insertChatroomSchema,
   chatroomMembers, insertChatroomMemberSchema,
+  chatroomPersonas, insertChatroomPersonaSchema,
   personas, insertPersonaSchema,
   personaCategories, insertPersonaCategorySchema,
   messages, insertMessageSchema,
@@ -10,6 +11,7 @@ import {
   User, InsertUser, 
   Chatroom, InsertChatroom, 
   ChatroomMember, InsertChatroomMember,
+  ChatroomPersona, InsertChatroomPersona,
   Persona, InsertPersona,
   PersonaCategory, InsertPersonaCategory,
   Message, InsertMessage, 
@@ -20,7 +22,7 @@ import {
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, sql } from "drizzle-orm";
 import { pool } from "./db";
 
 // Interface for storage operations
@@ -34,6 +36,9 @@ export interface IStorage {
   getChatroom(id: number): Promise<Chatroom | undefined>;
   getChatrooms(): Promise<ChatroomWithStats[]>;
   createChatroom(chatroom: InsertChatroom): Promise<Chatroom>;
+  deleteChatroom(id: number): Promise<void>;
+  addPersonaToChatroom(chatroomId: number, personaId: number): Promise<ChatroomPersona>;
+  getChatroomPersonas(chatroomId: number): Promise<PersonaWithCategory[]>;
   
   // Persona category operations
   getPersonaCategory(id: number): Promise<PersonaCategory | undefined>;
@@ -42,9 +47,13 @@ export interface IStorage {
   
   // Persona operations
   getPersona(id: number): Promise<Persona | undefined>;
-  getPersonas(): Promise<PersonaWithCategory[]>;
+  getPersonas(userId?: string, includeDefault?: boolean): Promise<PersonaWithCategory[]>;
+  getUserPersonas(userId: string): Promise<PersonaWithCategory[]>;
+  getPublicPersonas(): Promise<PersonaWithCategory[]>;
   createPersona(persona: InsertPersona): Promise<Persona>;
   updatePersonaPopularity(id: number): Promise<void>;
+  deletePersona(id: number, userId: string): Promise<void>;
+  searchPersonas(query: string, userId?: string): Promise<PersonaWithCategory[]>;
   
   // Message operations
   getMessage(id: number): Promise<Message | undefined>;
@@ -97,6 +106,7 @@ export class DatabaseStorage implements IStorage {
       // Check if personas already exist
       const existingPersonas = await this.getPersonas();
       if (existingPersonas.length === 0) {
+        // Create sample personas
         const samplePersonas: InsertPersona[] = [
           {
             name: "Nova",
@@ -142,31 +152,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
       
-      // Check if chatrooms already exist
-      const existingChatrooms = await this.getChatrooms();
-      if (existingChatrooms.length === 0) {
-        // Add sample chatrooms
-        await this.createChatroom({
-          name: "Sci-Fi Explorers",
-          description: "Discuss space exploration with famous sci-fi characters",
-          createdBy: "system", // System created
-          theme: "scifi"
-        });
-        
-        await this.createChatroom({
-          name: "Fantasy Adventurers",
-          description: "Join medieval fantasy characters on epic quests and adventures",
-          createdBy: "system", // System created
-          theme: "fantasy"
-        });
-        
-        await this.createChatroom({
-          name: "Historical Figures",
-          description: "Chat with famous historical personalities from different eras",
-          createdBy: "system", // System created
-          theme: "historical"
-        });
-      }
+      // We're no longer creating sample chatrooms - users will create their own
     } catch (error) {
       console.error("Error initializing sample data:", error);
     }
@@ -253,36 +239,181 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getChatrooms(): Promise<ChatroomWithStats[]> {
+  async getChatrooms(userId?: string): Promise<ChatroomWithStats[]> {
     try {
-      const allChatrooms = await db.select().from(chatrooms);
-      return allChatrooms.map(room => {
-        const activeUsers = this.getActiveUsers(room.id);
-        return {
+      let rooms: typeof chatrooms.$inferSelect[] = [];
+      
+      if (userId) {
+        // If userId is provided, only get rooms where the user is a member
+        const memberRooms = await db
+          .select({
+            roomId: chatroomMembers.chatroomId
+          })
+          .from(chatroomMembers)
+          .where(eq(chatroomMembers.userId, userId));
+          
+        if (memberRooms.length === 0) {
+          return [];
+        }
+        
+        // Get all rooms
+        const allRooms = await db
+          .select()
+          .from(chatrooms)
+          .orderBy(chatrooms.createdAt);
+          
+        // Filter rooms where the user is a member
+        const roomIds = memberRooms.map(r => r.roomId);
+        rooms = allRooms.filter(room => roomIds.includes(room.id));
+      } else {
+        // If no userId is provided, return all rooms (for admin purposes)
+        rooms = await db
+          .select()
+          .from(chatrooms)
+          .orderBy(chatrooms.createdAt);
+      }
+      
+      // Add active users count and personas to each chatroom
+      const result: ChatroomWithStats[] = [];
+      
+      for (const room of rooms) {
+        const personas = await this.getChatroomPersonas(room.id);
+        result.push({
           ...room,
-          activeUsers: activeUsers.length
-        };
-      });
-    } catch (error) {
+          activeUsers: this.getActiveUsers(room.id).length,
+          personas: personas
+        });
+      }
+      
+      return result;
+    } catch (error: any) {
       console.error("Error fetching chatrooms:", error);
       return [];
     }
   }
   
-  async createChatroom(insertChatroom: InsertChatroom): Promise<Chatroom> {
+  async createChatroom(chatroom: InsertChatroom & { selectedPersonas?: number[] }): Promise<Chatroom> {
     try {
-      const [chatroom] = await db
+      // Extract selectedPersonas from the input and remove it from what gets inserted into the DB
+      const { selectedPersonas, ...chatroomData } = chatroom as any;
+      
+      const [newChatroom] = await db
         .insert(chatrooms)
-        .values(insertChatroom)
+        .values(chatroomData)
         .returning();
-        
-      // Add the creator as the owner of the chatroom
-      await this.addChatroomMember(chatroom.id, insertChatroom.createdBy, 'owner');
-        
-      return chatroom;
-    } catch (error) {
+      
+      // Add selected personas to the chatroom if provided
+      if (selectedPersonas && Array.isArray(selectedPersonas) && selectedPersonas.length > 0) {
+        for (const personaId of selectedPersonas) {
+          await this.addPersonaToChatroom(newChatroom.id, personaId);
+        }
+      }
+      
+      return newChatroom;
+    } catch (error: any) {
       console.error("Error creating chatroom:", error);
       throw error;
+    }
+  }
+  
+  async deleteChatroom(id: number): Promise<void> {
+    try {
+      // First, delete all related records
+      // Delete chatroom members
+      await db
+        .delete(chatroomMembers)
+        .where(eq(chatroomMembers.chatroomId, id));
+      
+      // Delete chatroom personas
+      await db
+        .delete(chatroomPersonas)
+        .where(eq(chatroomPersonas.chatroomId, id));
+      
+      // Delete messages (and their attachments will cascade)
+      await db
+        .delete(messages)
+        .where(eq(messages.roomId, id));
+      
+      // Finally, delete the chatroom itself
+      await db
+        .delete(chatrooms)
+        .where(eq(chatrooms.id, id));
+      
+      // Clear any active users for this room
+      this.activeUsers.delete(id);
+    } catch (error) {
+      console.error("Error deleting chatroom:", error);
+      throw error;
+    }
+  }
+  
+  async addPersonaToChatroom(chatroomId: number, personaId: number): Promise<ChatroomPersona> {
+    try {
+      // Check if association already exists
+      const existing = await db
+        .select()
+        .from(chatroomPersonas)
+        .where(
+          and(
+            eq(chatroomPersonas.chatroomId, chatroomId),
+            eq(chatroomPersonas.personaId, personaId)
+          )
+        );
+        
+      if (existing.length > 0) {
+        return existing[0];
+      }
+      
+      // Create new association
+      const [association] = await db
+        .insert(chatroomPersonas)
+        .values({
+          chatroomId,
+          personaId
+        })
+        .returning();
+        
+      return association;
+    } catch (error: any) {
+      console.error("Error adding persona to chatroom:", error);
+      throw error;
+    }
+  }
+  
+  async getChatroomPersonas(chatroomId: number): Promise<PersonaWithCategory[]> {
+    try {
+      // First get all persona IDs associated with this chatroom
+      const associations = await db
+        .select()
+        .from(chatroomPersonas)
+        .where(eq(chatroomPersonas.chatroomId, chatroomId));
+      
+      if (associations.length === 0) {
+        return [];
+      }
+      
+      // Get all personas and categories
+      const allPersonas = await db.select().from(personas);
+      const allCategories = await db.select().from(personaCategories);
+      
+      // Filter personas that are in this chatroom
+      const chatroomPersonaIds = associations.map(a => a.personaId);
+      const filteredPersonas = allPersonas.filter(p => chatroomPersonaIds.includes(p.id));
+      
+      // Map to PersonaWithCategory
+      return filteredPersonas.map(persona => {
+        const category = persona.categoryId 
+          ? allCategories.find(c => c.id === persona.categoryId) 
+          : undefined;
+          
+        return {
+          ...persona,
+          category: category
+        };
+      });
+    } catch (error: any) {
+      console.error("Error fetching chatroom personas:", error);
+      return [];
     }
   }
   
@@ -322,7 +453,10 @@ export class DatabaseStorage implements IStorage {
   // Persona Methods
   async getPersona(id: number): Promise<Persona | undefined> {
     try {
-      const [persona] = await db.select().from(personas).where(eq(personas.id, id));
+      const [persona] = await db
+        .select()
+        .from(personas)
+        .where(eq(personas.id, id));
       return persona;
     } catch (error) {
       console.error("Error fetching persona:", error);
@@ -330,37 +464,268 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getPersonas(): Promise<PersonaWithCategory[]> {
+  async getPersonas(userId?: string, includeDefault: boolean = true): Promise<PersonaWithCategory[]> {
     try {
-      const allPersonas = await db.select().from(personas);
+      // Define the selection object for reuse
+      const selection = {
+        id: personas.id,
+        name: personas.name,
+        description: personas.description,
+        samplePrompt: personas.samplePrompt,
+        avatarUrl: personas.avatarUrl,
+        categoryId: personas.categoryId,
+        popularity: personas.popularity,
+        createdAt: personas.createdAt,
+        updatedAt: personas.updatedAt,
+        customizable: personas.customizable,
+        createdBy: personas.createdBy,
+        isPublic: personas.isPublic,
+        isDefault: personas.isDefault,
+        category: personaCategories,
+      };
       
-      // Fetch all categories at once to minimize database queries
-      const allCategories = await this.getPersonaCategories();
-      const categoriesMap = new Map(allCategories.map(cat => [cat.id, cat]));
+      // Build the query based on conditions
+      let result;
       
-      // Add category to each persona if available
-      return allPersonas.map(persona => {
-        const category = persona.categoryId ? categoriesMap.get(persona.categoryId) : undefined;
-        return {
-          ...persona,
-          category
-        };
-      });
+      if (userId) {
+        if (includeDefault) {
+          // Include user's personas and public default personas
+          result = await db
+            .select(selection)
+            .from(personas)
+            .leftJoin(personaCategories, eq(personas.categoryId, personaCategories.id))
+            .where(
+              or(
+                eq(personas.createdBy, userId),
+                and(
+                  eq(personas.isPublic, true),
+                  eq(personas.isDefault, true)
+                )
+              )
+            )
+            .orderBy(personas.popularity);
+        } else {
+          // Only include user's personas
+          result = await db
+            .select(selection)
+            .from(personas)
+            .leftJoin(personaCategories, eq(personas.categoryId, personaCategories.id))
+            .where(eq(personas.createdBy, userId))
+            .orderBy(personas.popularity);
+        }
+      } else {
+        // No userId provided, return all personas
+        result = await db
+          .select(selection)
+          .from(personas)
+          .leftJoin(personaCategories, eq(personas.categoryId, personaCategories.id))
+          .orderBy(personas.popularity);
+      }
+      
+      return result.map(r => ({
+        ...r,
+        category: r.category ? r.category : undefined
+      }));
     } catch (error) {
       console.error("Error fetching personas:", error);
       return [];
     }
   }
   
+  async getUserPersonas(userId: string): Promise<PersonaWithCategory[]> {
+    try {
+      const result = await db
+        .select({
+          id: personas.id,
+          name: personas.name,
+          description: personas.description,
+          samplePrompt: personas.samplePrompt,
+          avatarUrl: personas.avatarUrl,
+          categoryId: personas.categoryId,
+          popularity: personas.popularity,
+          createdAt: personas.createdAt,
+          updatedAt: personas.updatedAt,
+          customizable: personas.customizable,
+          createdBy: personas.createdBy,
+          isPublic: personas.isPublic,
+          isDefault: personas.isDefault,
+          category: personaCategories,
+        })
+        .from(personas)
+        .leftJoin(personaCategories, eq(personas.categoryId, personaCategories.id))
+        .where(eq(personas.createdBy, userId))
+        .orderBy(personas.createdAt);
+      
+      return result.map(r => ({
+        ...r,
+        category: r.category ? r.category : undefined
+      }));
+    } catch (error) {
+      console.error("Error fetching user personas:", error);
+      return [];
+    }
+  }
+  
+  async getPublicPersonas(): Promise<PersonaWithCategory[]> {
+    try {
+      const result = await db
+        .select({
+          id: personas.id,
+          name: personas.name,
+          description: personas.description,
+          samplePrompt: personas.samplePrompt,
+          avatarUrl: personas.avatarUrl,
+          categoryId: personas.categoryId,
+          popularity: personas.popularity,
+          createdAt: personas.createdAt,
+          updatedAt: personas.updatedAt,
+          customizable: personas.customizable,
+          createdBy: personas.createdBy,
+          isPublic: personas.isPublic,
+          isDefault: personas.isDefault,
+          category: personaCategories,
+        })
+        .from(personas)
+        .leftJoin(personaCategories, eq(personas.categoryId, personaCategories.id))
+        .where(
+          and(
+            eq(personas.isPublic, true),
+            eq(personas.isDefault, true)
+          )
+        )
+        .orderBy(personas.popularity);
+      
+      return result.map(r => ({
+        ...r,
+        category: r.category ? r.category : undefined
+      }));
+    } catch (error) {
+      console.error("Error fetching public personas:", error);
+      return [];
+    }
+  }
+  
+  async searchPersonas(query: string, userId?: string): Promise<PersonaWithCategory[]> {
+    try {
+      // Define the selection object for reuse
+      const selection = {
+        id: personas.id,
+        name: personas.name,
+        description: personas.description,
+        samplePrompt: personas.samplePrompt,
+        avatarUrl: personas.avatarUrl,
+        categoryId: personas.categoryId,
+        popularity: personas.popularity,
+        createdAt: personas.createdAt,
+        updatedAt: personas.updatedAt,
+        customizable: personas.customizable,
+        createdBy: personas.createdBy,
+        isPublic: personas.isPublic,
+        isDefault: personas.isDefault,
+        category: personaCategories,
+      };
+      
+      // Filter based on search term
+      const searchTerm = `%${query.toLowerCase()}%`;
+      
+      // Build the query based on conditions
+      let result;
+      
+      if (userId) {
+        // For authenticated users, show their own personas and public ones with search filter
+        result = await db
+          .select(selection)
+          .from(personas)
+          .leftJoin(personaCategories, eq(personas.categoryId, personaCategories.id))
+          .where(
+            and(
+              or(
+                eq(personas.createdBy, userId),
+                eq(personas.isPublic, true)
+              ),
+              or(
+                sql`lower(${personas.name}) like ${searchTerm}`,
+                sql`lower(${personas.description}) like ${searchTerm}`
+              )
+            )
+          )
+          .orderBy(personas.popularity);
+      } else {
+        // For non-authenticated users, only show public personas with search filter
+        result = await db
+          .select(selection)
+          .from(personas)
+          .leftJoin(personaCategories, eq(personas.categoryId, personaCategories.id))
+          .where(
+            and(
+              eq(personas.isPublic, true),
+              or(
+                sql`lower(${personas.name}) like ${searchTerm}`,
+                sql`lower(${personas.description}) like ${searchTerm}`
+              )
+            )
+          )
+          .orderBy(personas.popularity);
+      }
+      
+      return result.map(r => ({
+        ...r,
+        category: r.category ? r.category : undefined
+      }));
+    } catch (error) {
+      console.error("Error searching personas:", error);
+      return [];
+    }
+  }
+  
   async createPersona(insertPersona: InsertPersona): Promise<Persona> {
     try {
+      // Set default values for new personas
+      const personaData = {
+        ...insertPersona,
+        isDefault: insertPersona.isDefault ?? false,
+        isPublic: insertPersona.isPublic ?? true
+      };
+      
       const [persona] = await db
         .insert(personas)
-        .values(insertPersona)
+        .values(personaData)
         .returning();
       return persona;
     } catch (error) {
       console.error("Error creating persona:", error);
+      throw error;
+    }
+  }
+  
+  async deletePersona(id: number, userId: string): Promise<void> {
+    try {
+      // First check if the persona exists and belongs to the user
+      const persona = await this.getPersona(id);
+      if (!persona) {
+        throw new Error("Persona not found");
+      }
+      
+      // Only allow deletion if the persona was created by this user and is not a default persona
+      if (persona.createdBy !== userId) {
+        throw new Error("You don't have permission to delete this persona");
+      }
+      
+      if (persona.isDefault) {
+        throw new Error("Default personas cannot be deleted");
+      }
+      
+      // First, remove this persona from all chatrooms
+      await db
+        .delete(chatroomPersonas)
+        .where(eq(chatroomPersonas.personaId, id));
+      
+      // Then delete the persona itself
+      await db
+        .delete(personas)
+        .where(eq(personas.id, id));
+    } catch (error) {
+      console.error("Error deleting persona:", error);
       throw error;
     }
   }

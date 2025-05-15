@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ChatroomWithStats } from "@shared/schema";
+import { Trash2 } from "lucide-react";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,8 @@ export default function Sidebar({ currentPage, onNewRoom, isOpen }: SidebarProps
   const [location, navigate] = useLocation();
   const { theme, setTheme } = useTheme();
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+  const [deletingChatroomId, setDeletingChatroomId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
   
   const {
     data: chatrooms,
@@ -34,6 +37,34 @@ export default function Sidebar({ currentPage, onNewRoom, isOpen }: SidebarProps
   } = useQuery<ChatroomWithStats[]>({
     queryKey: ["/api/chatrooms"],
   });
+  
+  const handleDeleteChatroom = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation to the chatroom
+    setDeletingChatroomId(id);
+    
+    try {
+      const response = await fetch(`/api/chatrooms/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        // Invalidate the chatrooms query to refresh the list
+        queryClient.invalidateQueries({ queryKey: ["/api/chatrooms"] });
+        
+        // If we're currently on this chatroom page, navigate to dashboard
+        if (location === `/chatroom/${id}`) {
+          navigate('/');
+        }
+      } else {
+        const errorData = await response.json();
+        console.error("Error deleting chatroom:", errorData.message);
+      }
+    } catch (error) {
+      console.error("Error deleting chatroom:", error);
+    } finally {
+      setDeletingChatroomId(null);
+    }
+  };
   
   if (!isOpen || !user) {
     return null;
@@ -154,22 +185,41 @@ export default function Sidebar({ currentPage, onNewRoom, isOpen }: SidebarProps
                 return (
                   <div
                     key={room.id}
-                    className={`rounded-lg ${getThemeStyles()} p-3 hover:shadow-sm cursor-pointer transition border`}
+                    className={`rounded-lg ${getThemeStyles()} p-3 hover:shadow-sm cursor-pointer transition border relative group`}
                     onClick={() => navigate(`/chatroom/${room.id}`)}
                   >
                     <div className="flex justify-between items-start">
                       <h3 className={`font-medium ${isActive ? "text-primary" : ""}`}>
                         {room.name}
                       </h3>
-                      {room.activeUsers > 0 ? (
-                        <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
-                          {room.activeUsers} active
-                        </span>
-                      ) : (
-                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                          inactive
-                        </span>
-                      )}
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                          onClick={(e) => handleDeleteChatroom(room.id, e)}
+                          disabled={deletingChatroomId === room.id}
+                          title="Delete chatroom"
+                        >
+                          {deletingChatroomId === room.id ? (
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                        {room.activeUsers > 0 ? (
+                          <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
+                            {room.activeUsers} active
+                          </span>
+                        ) : (
+                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                            inactive
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className={`text-sm ${isActive ? "text-primary/90" : "text-muted-foreground"} mt-1 line-clamp-2`}>
                       {room.description}

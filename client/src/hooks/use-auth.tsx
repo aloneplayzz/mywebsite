@@ -14,13 +14,24 @@ type AuthContextType = {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
+// Helper to get the correct API base URL based on environment
+function getApiBaseUrl() {
+  // Check if we're in production (Netlify)
+  if (window.location.hostname.includes('windsurf.build') || 
+      window.location.hostname.includes('netlify.app')) {
+    return '/.netlify/functions/api';
+  }
+  // Local development
+  return '/api';
+}
+
 function useLogoutMutation() {
   const { toast } = useToast();
   
   return useMutation({
     mutationFn: async () => {
       // For Google Auth, navigate to the logout endpoint
-      window.location.href = '/api/auth/logout';
+      window.location.href = `${getApiBaseUrl()}/auth/logout`;
     },
     onError: (error: Error) => {
       toast({
@@ -40,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     isLoading,
   } = useQuery<User, Error>({
-    queryKey: ["/api/auth/user"],
+    queryKey: [`${getApiBaseUrl()}/auth/user`],
     queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
   });
@@ -70,7 +81,15 @@ export function useAuth() {
   return context;
 }
 
-// Utility function to redirect to Google login
-export function login() {
-  window.location.href = '/api/auth/google';
+// Utility functions for OAuth logins
+export function loginWithGoogle() {
+  window.location.href = `${getApiBaseUrl()}/auth/google`;
+}
+
+export function loginWithGithub() {
+  window.location.href = `${getApiBaseUrl()}/auth/github`;
+}
+
+export function loginWithDiscord() {
+  window.location.href = `${getApiBaseUrl()}/auth/discord`;
 }
