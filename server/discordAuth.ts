@@ -16,7 +16,9 @@ export function setupDiscordAuth(app: Express): void {
         {
           clientID: process.env.DISCORD_CLIENT_ID,
           clientSecret: process.env.DISCORD_CLIENT_SECRET,
-          callbackURL: "/api/auth/discord/callback",
+          callbackURL: process.env.NODE_ENV === "production" 
+            ? `${process.env.RENDER_EXTERNAL_URL}/api/auth/discord/callback`
+            : "/api/auth/discord/callback",
           scope: ["identify", "email"]
         },
         async (accessToken: string, refreshToken: string, profile: DiscordProfile, done: VerifyCallback) => {

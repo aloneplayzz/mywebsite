@@ -64,7 +64,7 @@ export function setupGoogleAuth(app: Express): void {
           clientID: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
           callbackURL: process.env.NODE_ENV === "production" 
-            ? "https://ai-persona-chatroom-app.windsurf.build/.netlify/functions/api/auth/google/callback"
+            ? `${process.env.RENDER_EXTERNAL_URL}/api/auth/google/callback`
             : "/api/auth/google/callback"
         },
         async (accessToken, refreshToken, profile, done) => {
