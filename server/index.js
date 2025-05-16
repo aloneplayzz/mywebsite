@@ -8,13 +8,19 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const WebSocket = require('ws');
 const http = require('http');
-require('dotenv').config();
+try {
+  require('dotenv').config();
+} catch (err) {
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('.env file not found, relying on environment variables from platform.');
+  } else {
+    console.error('Failed to load .env file:', err);
+  }
+}
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
-
-// ... existing code ...
 
 // Discord Strategy
 passport.use(new DiscordStrategy({
@@ -75,8 +81,6 @@ passport.use(new GitHubStrategy({
   }
 ));
 
-// ... existing code ...
-
 // Discord auth routes
 app.get('/api/auth/discord',
   passport.authenticate('discord')
@@ -101,4 +105,4 @@ app.get('/api/auth/github/callback',
   }
 );
 
-// ... rest of the existing code ... 
+// ... rest of the existing code ...
