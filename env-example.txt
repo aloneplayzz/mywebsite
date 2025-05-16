@@ -1,2 +1,0 @@
-# Update your .env file with this DATABASE_URL
-DATABASE_URL="postgresql://aipersona_user:7Sgj6gl1kGHBSedsHUrlnObgHY16NDt8@dpg-d0iccr95pdvs73ecb360-a.oregon-postgres.render.com/aipersona?sslmode=require"
