@@ -86,5 +86,9 @@ export default {
       },
     },
   },
+<<<<<<< HEAD
   plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography"), require("tailwind-scrollbar")],
+=======
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+>>>>>>> ae322bb (Checkpoint before revert)
 } satisfies Config;

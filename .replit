@@ -10,6 +10,13 @@ deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
 
+<<<<<<< HEAD
+=======
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+>>>>>>> ae322bb (Checkpoint before revert)
 [workflows]
 runButton = "Project"
 
@@ -30,7 +37,10 @@ author = "agent"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+<<<<<<< HEAD
 
 [[ports]]
 localPort = 5000
 externalPort = 80
+=======
+>>>>>>> ae322bb (Checkpoint before revert)

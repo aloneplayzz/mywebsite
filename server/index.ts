@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // Load environment variables from .env file if it exists
 import { config } from 'dotenv';
 import * as fs from 'fs';
@@ -18,6 +19,11 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
+=======
+import express, { type Request, Response, NextFunction } from "express";
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
+>>>>>>> ae322bb (Checkpoint before revert)
 
 const app = express();
 app.use(express.json());
@@ -53,6 +59,7 @@ app.use((req, res, next) => {
   next();
 });
 
+<<<<<<< HEAD
 // Function to initialize personas when the server starts
 async function initializePersonas() {
   try {
@@ -83,6 +90,10 @@ async function initializePersonas() {
   
   // Initialize personas when the server starts
   await initializePersonas();
+=======
+(async () => {
+  const server = await registerRoutes(app);
+>>>>>>> ae322bb (Checkpoint before revert)
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -103,8 +114,13 @@ async function initializePersonas() {
 
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.
+<<<<<<< HEAD
   // It is the only\\\\\\ port that is not firewalled.
   const port = 5002;
+=======
+  // It is the only port that is not firewalled.
+  const port = 5000;
+>>>>>>> ae322bb (Checkpoint before revert)
   server.listen({
     port,
     host: "0.0.0.0",

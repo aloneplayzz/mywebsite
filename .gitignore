@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dependencies
 node_modules/
 npm-debug.log
@@ -38,3 +39,11 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+=======
+node_modules
+dist
+.DS_Store
+server/public
+vite.config.ts.*
+*.tar.gz
+>>>>>>> ae322bb (Checkpoint before revert)
